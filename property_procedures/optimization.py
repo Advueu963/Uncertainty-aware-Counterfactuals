@@ -33,6 +33,7 @@ def counter_factual_optimization_routine(
     T = 0
     patience_counter = 0
     prior_loss = 0
+    start_cf_construction = False
     while (
         T < MAX_STEPS
         and target_probs < DESIRED_VALIDITY
@@ -53,6 +54,7 @@ def counter_factual_optimization_routine(
             lambda_2=lambda_2,
             delta=delta,
             n_points=n_points,
+            start_cf_construction=start_cf_construction,
         )
 
         counter_factual.grad = grad
@@ -64,16 +66,29 @@ def counter_factual_optimization_routine(
         probs = probs_ensemble.mean(dim=1)
         target_probs = probs[0, desired_class]
 
+        if probs[0, 0] > 0.95:
+            # Once the loss is low enough, we assume that the model is confident about the class of point_of_interest
+            # Now we construct the counter factual
+            start_cf_construction = True
+            patience_counter = 0
+
         # Check for early stopping
         if prior_loss - loss.item() < 0.01:
             patience_counter += 1
-
         else:
             patience_counter = 0
+
         prior_loss = loss.item()
         # Save the intermediate steps
         counter_factual_steps = torch.cat(
             (counter_factual_steps, counter_factual.detach())
         )
         T += 1
+    # Print out reason for stopping
+    if T >= MAX_STEPS:
+        print("Reached maximum number of steps.")
+    elif target_probs >= DESIRED_VALIDITY:
+        print("Desired validity reached.")
+    elif patience_counter >= patience:
+        print("Patience limit reached.")
     return counter_factual.detach(), counter_factual_steps

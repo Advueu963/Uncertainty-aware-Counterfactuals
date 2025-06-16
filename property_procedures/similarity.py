@@ -54,6 +54,7 @@ def similiarity_procedure(
     lambda_1=0.1,
     lambda_2=0.7,
     patience=10,
+    start_cf_construction=False,
 ):
     counter_factual = point_to_explain.detach().clone().requires_grad_(True)
     counter_factual_steps = counter_factual.detach().clone()

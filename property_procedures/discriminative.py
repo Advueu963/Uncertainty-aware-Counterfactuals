@@ -16,6 +16,7 @@ def discriminative_loss_function(
     lambda_2=0.7,
     delta=0.1,
     n_points=10,
+    start_cf_construction=False,
 ):
     # Extract loss value
     probs_ensemble = probability_function(model, counter_factual)

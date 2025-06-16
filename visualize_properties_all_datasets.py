@@ -14,13 +14,13 @@ from data import (
     load_infinity_dataset,
 )
 from property_procedures import (
-    similarity_loss_function,
     validity_loss_function,
     connected_loss_function,
     robust_loss_function,
     feasable_loss_function,
     discriminative_loss_function,
     plausable_loss_function,
+    similarity_loss_function,
     counter_factual_optimization_routine,
 )
 import matplotlib.pyplot as plt
@@ -41,7 +41,7 @@ PROB_WEIGHT = 1
 LAMBDA_1 = 1
 LAMBDA_2 = 1
 MAX_STEPS = 5000
-PATIENCE = 50
+PATIENCE = 100
 DESIRED_CLASS = 1
 ENSEMBLE_MEMBER_COUNT = 20
 base_ensemble = [
@@ -185,9 +185,6 @@ PROPERTY_LOADERS = [
             "delta": DELTA,
         },
     ),
-    # ("stable", stability_loss_function, {"MAX_STEPS": MAX_STEPS, "aleatoric_uncertainty_function": aleatoric_uncertainty_ensemble, "n_points": 10,
-    #   "DESIRED_VALIDITY": DESIRED_VALIDITY, "delta": DELTA}),
-    # ("sparse", sparse_loss_function, {"MAX_STEPS": MAX_STEPS, "aleatoric_uncertainty_function": aleatoric_uncertainty_ensemble, "n_points": 10, "DESIRED_VALIDITY": DESIRED_VALIDITY, "delta": DELTA})
 ]
 
 

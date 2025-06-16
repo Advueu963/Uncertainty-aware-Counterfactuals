@@ -16,6 +16,7 @@ def sparse_loss_function(
     lambda_2=0.7,
     delta=0.1,
     n_points=10,
+    start_cf_construction=False,
 ):
     probs_ensemble_cf = probability_function(model, counter_factual)
     target_probs_cf = probs_ensemble_cf.mean(dim=1)[0, desired_class]
