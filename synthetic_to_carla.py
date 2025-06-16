@@ -1,8 +1,16 @@
 import numpy as np
 
-from carla import Data, MLModelCatalog
-from carla.recourse_methods import GrowingSpheres, Clue, Face, Dice
-from data import load_bubbles, load_bubbles_noisy, load_l_dataset, load_ring_dataset, load_infinity_dataset, load_two_moon, load_one_moon
+from carla import Data
+from data import (
+    load_bubbles,
+    load_bubbles_noisy,
+    load_l_dataset,
+    load_ring_dataset,
+    load_infinity_dataset,
+    load_two_moon,
+    load_one_moon,
+    load_noisy_datasets,
+)
 import pandas as pd
 from carla import MLModel
 from epiuc.uncertainty.classification import MLP_Classifier
@@ -14,30 +22,29 @@ class Synthetic_CARLA(Data):
     def __init__(self, dataset_name):
         # The data set can e.g. be loaded in the constructor
         if dataset_name == "one_moon":
-            X,y,_ = load_one_moon()
+            X, y, _ = load_one_moon()
         elif dataset_name == "two_moon":
-            X,y,_ = load_two_moon()
+            X, y, _ = load_two_moon()
         elif dataset_name == "infinity":
-            X,y,_ = load_infinity_dataset()
+            X, y, _ = load_infinity_dataset()
         elif dataset_name == "ring_dataset":
-            X,y,_ = load_ring_dataset()
+            X, y, _ = load_ring_dataset()
         elif dataset_name == "l_dataset":
-            X,y,_ = load_l_dataset()
+            X, y, _ = load_l_dataset()
         elif dataset_name == "bubbles":
-            X,y,_ = load_bubbles()
+            X, y, _ = load_bubbles()
         elif dataset_name == "bubbles_noisy":
-            X,y,_ = load_bubbles_noisy()
+            X, y, _ = load_bubbles_noisy()
         elif dataset_name == "infinity_dataset":
-            X,y,_ = load_infinity_dataset()
+            X, y, _ = load_infinity_dataset()
         else:
             raise ValueError(f"Unknown dataset name: {dataset_name}")
 
-        data_set = pd.DataFrame({"x0": X[:,0],"x1":X[:,1], "label": y})
-        self._dataset     = data_set
+        data_set = pd.DataFrame({"x0": X[:, 0], "x1": X[:, 1], "label": y})
+        self._dataset = data_set
         self._dataset_train = data_set.sample(frac=0.8, random_state=42)
-        self._dataset_test  = data_set.drop(self._dataset_train.index)
+        self._dataset_test = data_set.drop(self._dataset_train.index)
         self.name = dataset_name
-
 
     # List of all categorical features
     @property
@@ -73,7 +80,7 @@ class Synthetic_CARLA(Data):
     # The test split of the dataset
     @property
     def df_test(self):
-         return self._dataset_test
+        return self._dataset_test
 
     # Data transformation, for example normalization of continuous features
     # and encoding of categorical features
@@ -81,10 +88,12 @@ class Synthetic_CARLA(Data):
         # Example transformation: normalize continuous features
         transformed_df = df.copy()
         for col in self.continuous:
-            transformed_df[col] = (transformed_df[col] - transformed_df[col].mean()) / transformed_df[col].std()
+            transformed_df[col] = (
+                transformed_df[col] - transformed_df[col].mean()
+            ) / transformed_df[col].std()
         # Example encoding of categorical features
         for col in self.categorical:
-            transformed_df[col] = transformed_df[col].astype('category').cat.codes
+            transformed_df[col] = transformed_df[col].astype("category").cat.codes
         # Ensure immutables are not transformed
         for col in self.immutables:
             if col in transformed_df.columns:
@@ -105,7 +114,13 @@ class Synthetic_CARLA(Data):
             original_df[col] = df[col] * std + mean
         # Example decoding of categorical features
         for col in self.categorical:
-            original_df[col] = original_df[col].astype('category').cat.rename_categories(self._dataset[col].astype('category').cat.categories)
+            original_df[col] = (
+                original_df[col]
+                .astype("category")
+                .cat.rename_categories(
+                    self._dataset[col].astype("category").cat.categories
+                )
+            )
         # Ensure immutables are not transformed
         for col in self.immutables:
             if col in original_df.columns:
@@ -116,14 +131,135 @@ class Synthetic_CARLA(Data):
         # Return the original DataFrame
         return original_df
 
+
+class Synthetic_CARLA_Noisy(Data):
+    def __init__(self, dataset_name):
+        # The data set can e.g. be loaded in the constructor
+        X, y, _ = load_noisy_datasets(dataset_name)
+
+        data_set = pd.DataFrame(
+            {
+                "x0": X[:, 0],
+                "x1": X[:, 1],
+                "noise_0": X[:, 2],
+                "noise_1": X[:, 3],
+                "noise_2": X[:, 4],
+                "noise_3": X[:, 5],
+                "noise_4": X[:, 6],
+                "noise_5": X[:, 7],
+                "noise_6": X[:, 8],
+                "noise_7": X[:, 9],
+                "label": y,
+            }
+        )
+        self._dataset = data_set
+        self._dataset_train = data_set.sample(frac=0.8, random_state=42)
+        self._dataset_test = data_set.drop(self._dataset_train.index)
+        self.name = dataset_name
+
+    # List of all categorical features
+    @property
+    def categorical(self):
+        return []
+
+    # List of all continuous features
+    @property
+    def continuous(self):
+        return ["x0", "x1"] + [f"noise_{i}" for i in range(8)]
+
+    # List of all immutable features which
+    # should not be changed by the recourse method
+    @property
+    def immutables(self):
+        return []
+
+    # Feature name of the target column
+    @property
+    def target(self):
+        return "label"
+
+    # The full dataset
+    @property
+    def df(self):
+        return self._dataset
+
+    # The training split of the dataset
+    @property
+    def df_train(self):
+        return self._dataset_train
+
+    # The test split of the dataset
+    @property
+    def df_test(self):
+        return self._dataset_test
+
+    # Data transformation, for example normalization of continuous features
+    # and encoding of categorical features
+    def transform(self, df):
+        # Example transformation: normalize continuous features
+        transformed_df = df.copy()
+        for col in self.continuous:
+            transformed_df[col] = (
+                transformed_df[col] - transformed_df[col].mean()
+            ) / transformed_df[col].std()
+        # Example encoding of categorical features
+        for col in self.categorical:
+            transformed_df[col] = transformed_df[col].astype("category").cat.codes
+        # Ensure immutables are not transformed
+        for col in self.immutables:
+            if col in transformed_df.columns:
+                transformed_df[col] = df[col]
+        # Ensure target column is not transformed
+        if self.target in transformed_df.columns:
+            transformed_df[self.target] = df[self.target]
+        # Return the transformed DataFrame
+        return transformed_df
+
+    # Inverts transform operation
+    def inverse_transform(self, df):
+        # Example inverse transformation: denormalize continuous features
+        original_df = df.copy()
+        for col in self.continuous:
+            mean = self._dataset[col].mean()
+            std = self._dataset[col].std()
+            original_df[col] = df[col] * std + mean
+        # Example decoding of categorical features
+        for col in self.categorical:
+            original_df[col] = (
+                original_df[col]
+                .astype("category")
+                .cat.rename_categories(
+                    self._dataset[col].astype("category").cat.categories
+                )
+            )
+        # Ensure immutables are not transformed
+        for col in self.immutables:
+            if col in original_df.columns:
+                original_df[col] = df[col]
+        # Ensure target column is not transformed
+        if self.target in original_df.columns:
+            original_df[self.target] = df[self.target]
+        # Return the original DataFrame
+        return original_df
+
+
 class MyOwnModel(MLModel):
-    def __init__(self, data: Synthetic_CARLA):
+    def __init__(self, data: Synthetic_CARLA_Noisy, n_models=10, input_shape=2):
         super().__init__(data)
         # The constructor can be used to load or build an
+
         base_ensemble = [
-            MLP_Classifier(input_shape=2, n_classes=2, n_layers=2, num_neurons=10, dropout_prob=0, batch_norm=False, )
-            for _ in range(10)]
-        ensemble_model = Ensemble_Classifier(base_ensemble, n_models=10)
+            MLP_Classifier(
+                input_shape=input_shape,
+                n_classes=2,
+                n_layers=2,
+                num_neurons=64,
+                dropout_prob=0,
+                batch_norm=False,
+            )
+            for _ in range(n_models)
+        ]
+        ensemble_model = Ensemble_Classifier(base_ensemble, n_models=n_models)
         ensemble_model.load(f"models/Ensemble_{data.name.capitalize()}/")
 
         self._mymodel = ensemble_model
@@ -146,9 +282,65 @@ class MyOwnModel(MLModel):
     # The predict function outputs
     # the continuous prediction of the model
     def predict(self, x):
-        y_prob,_ = self._mymodel.predict(x)
+        y_prob, _ = self._mymodel.predict(x)
         # Convert probabilities to class labels
-        y_pred =  y_prob.argmax(axis=1)
+        y_pred = y_prob.argmax(axis=1)
+        return y_pred.detach().numpy()
+
+    # The predict_proba method outputs
+    # the prediction as class probabilities
+    def predict_proba(self, x):
+        # Ensure x is a tensor if needed
+        if isinstance(x, pd.DataFrame):
+            if "label" in x.columns:
+                x = x.drop(columns=["label"])
+            x = x.values.astype(np.float32)
+        y_prob, _ = self._mymodel.predict(x)
+        return y_prob.detach().numpy()
+
+
+class MyOwnModel_Noisy(MLModel):
+    def __init__(self, data: Synthetic_CARLA_Noisy, n_models=10, input_shape=2):
+        super().__init__(data)
+        # The constructor can be used to load or build an
+
+        base_ensemble = [
+            MLP_Classifier(
+                input_shape=input_shape,
+                n_classes=2,
+                n_layers=2,
+                num_neurons=64,
+                dropout_prob=0,
+                batch_norm=False,
+            )
+            for _ in range(n_models)
+        ]
+        ensemble_model = Ensemble_Classifier(base_ensemble, n_models=n_models)
+        ensemble_model.load(f"models/Ensemble_{data.name.capitalize()}_extended/")
+
+        self._mymodel = ensemble_model
+
+    # List of the feature order the ml model was trained on
+    @property
+    def feature_input_order(self):
+        return ["x0", "x1"] + [f"noise_{i}" for i in range(8)]
+
+    # The ML framework the model was trained on
+    @property
+    def backend(self):
+        return "pytorch"
+
+    # The black-box model object
+    @property
+    def raw_model(self):
+        return self._mymodel
+
+    # The predict function outputs
+    # the continuous prediction of the model
+    def predict(self, x):
+        y_prob, _ = self._mymodel.predict(x)
+        # Convert probabilities to class labels
+        y_pred = y_prob.argmax(axis=1)
         return y_pred.detach().numpy()
 
     # The predict_proba method outputs
