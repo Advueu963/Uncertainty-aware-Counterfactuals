@@ -25,20 +25,18 @@ def connected_loss_function(
     # delta_ball = get_knn_points(counter_factual, k=n_points)
     probs_ensemble_delta_ball = probability_function(model, delta_ball)
     probs_delta_ball = probs_ensemble_delta_ball.mean(dim=1)
-    au_delta_ball = aleatoric_uncertainty_function(probs_ensemble_delta_ball)
     eu_delta_ball = epistemic_uncertainty_function(probs_ensemble_delta_ball)
 
     target_probs = probs[0, desired_class]
     target_probs_delta_ball = probs_delta_ball[:, desired_class]
 
-    if target_probs < 0.51:
-        loss = -(p_weight * target_probs_delta_ball.mean())
-    else:
-        loss = +lambda_1 * (eu_delta_ball.max()) - lambda_2 * (au_delta_ball.max())
+    loss = -(p_weight * target_probs_delta_ball.mean())
+    if target_probs > 0.51:
+        loss = loss + lambda_1 * (eu_delta_ball.mean())
 
     loss.backward()
     if target_probs < 0.51:
         grad = delta_ball.grad.mean(dim=0, keepdim=True)
     else:
-        grad = delta_ball.grad.sum(dim=0, keepdim=True)
+        grad = delta_ball.grad.mean(dim=0, keepdim=True)
     return loss, grad
