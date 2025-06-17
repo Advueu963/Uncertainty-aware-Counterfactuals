@@ -17,13 +17,15 @@ def validity_loss_function(
     probs = probs_ensemble.mean(dim=1)
     target_probs = probs[0, desired_class]
 
-    if target_probs < 0.5:
-        loss = -p_weight * (
-            lambda_2 * aleatoric_uncertainty_function(probs_ensemble)
-            + lambda_1 * epistemic_uncertainty_function(probs_ensemble)
-        )
-    else:
-        loss = -(p_weight * target_probs)
+    # if target_probs < 0.5:
+    #     loss = -p_weight * (
+    #         lambda_2 * aleatoric_uncertainty_function(probs_ensemble)
+    #         + lambda_1 * epistemic_uncertainty_function(probs_ensemble)
+    #     )
+    # else:
+    #     loss = -(p_weight * target_probs)
+
+    loss = -(p_weight * target_probs)
 
     loss.backward()
 

@@ -73,7 +73,7 @@ def counter_factual_optimization_routine(
             patience_counter = 0
 
         # Check for early stopping
-        if prior_loss - loss.item() < 0.01:
+        if abs(prior_loss - loss.item()) < 0.01:
             patience_counter += 1
         else:
             patience_counter = 0

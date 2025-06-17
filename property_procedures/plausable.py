@@ -1,6 +1,3 @@
-from property_procedures.utils import total_uncertainty_ensemble
-
-
 def plausable_loss_function(
     point_to_explain,
     counter_factual,
@@ -23,10 +20,9 @@ def plausable_loss_function(
 
     target_probs = probs[0, desired_class]
 
-    if target_probs < 0.5:
-        loss = -total_uncertainty_ensemble(probs_ensemble)
-    else:
-        loss = (-p_weight * target_probs) + lambda_1 * eu
+    loss = -p_weight * target_probs
+    if target_probs > 0.5:
+        loss = loss + lambda_1 * eu
 
     loss.backward()
 

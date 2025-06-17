@@ -25,11 +25,9 @@ def discriminative_loss_function(
 
     target_probs = probs[0, desired_class]
 
-    # Calculate the loss
-    if target_probs >= 0.5:
-        loss = p_weight * (-target_probs) + lambda_1 * au
-    else:
-        loss = -total_uncertainty_ensemble(probs_ensemble)
+    loss = -p_weight * target_probs
+    if target_probs > 0.5:
+        loss = loss + lambda_1 * au
 
     loss.backward()
 

@@ -1,4 +1,4 @@
-from property_procedures.utils import sample_delta_ball, total_uncertainty_ensemble
+from property_procedures.utils import sample_delta_ball
 
 
 def robust_loss_function(
@@ -23,26 +23,23 @@ def robust_loss_function(
     # sample_ball
     delta_ball = sample_delta_ball(counter_factual.detach().numpy(), delta, n_points)
     probs_ensemble_delta_ball = probability_function(model, delta_ball)
+    target_probs_delta_ball = probs_ensemble_delta_ball.mean(dim=1)[:, desired_class]
     eu_delta_ball = epistemic_uncertainty_function(probs_ensemble_delta_ball)
     au_delta_ball = aleatoric_uncertainty_function(probs_ensemble_delta_ball)
 
     target_probs = probs[0, desired_class]
 
     # Calculate the loss
-    if target_probs >= 0.5:
-        loss = (
-            -(p_weight * target_probs)
-            + lambda_1 * (eu_delta_ball.max())
-            + lambda_2 * (au_delta_ball.max())
-        )
+    if target_probs < 0.51:
+        loss = -(p_weight * target_probs_delta_ball.mean())
     else:
-        loss = (
-            -(total_uncertainty_ensemble(probs_ensemble))
-            - (eu_delta_ball + au_delta_ball).max()
-        )
+        loss = +lambda_1 * (eu_delta_ball.max()) + lambda_2 * (au_delta_ball.max())
 
     loss.backward()
 
-    return loss, counter_factual.grad + delta_ball.grad.sum(dim=0).view(
-        -1, *counter_factual.shape[1:]
-    )
+    if target_probs < 0.51:
+        grad = delta_ball.grad.mean(dim=0, keepdim=True)
+    else:
+        grad = delta_ball.grad.sum(dim=0, keepdim=True)
+
+    return loss, grad

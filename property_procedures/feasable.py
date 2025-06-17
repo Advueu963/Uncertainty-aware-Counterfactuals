@@ -36,6 +36,4 @@ def feasable_loss_function(
 
     loss.backward()
 
-    return loss, counter_factual.grad + delta_ball.grad.sum(dim=0).view(
-        -1, *counter_factual.shape[1:]
-    )
+    return loss, counter_factual.grad + delta_ball.grad.sum(dim=0, keepdim=True)

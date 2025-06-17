@@ -31,15 +31,14 @@ def connected_loss_function(
     target_probs = probs[0, desired_class]
     target_probs_delta_ball = probs_delta_ball[:, desired_class]
 
-    # loss = -target_probs + t*tu_point
-    if target_probs < 0.5:
-        loss = -(eu_delta_ball + au_delta_ball).mean()
+    if target_probs < 0.51:
+        loss = -(p_weight * target_probs_delta_ball.mean())
     else:
-        loss = (
-            -(p_weight * target_probs_delta_ball.mean())
-            + lambda_1 * (eu_delta_ball.mean())
-            + lambda_2 * (au_delta_ball.mean())
-        )
+        loss = +lambda_1 * (eu_delta_ball.max()) - lambda_2 * (au_delta_ball.max())
 
     loss.backward()
-    return loss, delta_ball.grad.mean(dim=0).view(-1, *counter_factual.shape[1:])
+    if target_probs < 0.51:
+        grad = delta_ball.grad.mean(dim=0, keepdim=True)
+    else:
+        grad = delta_ball.grad.sum(dim=0, keepdim=True)
+    return loss, grad

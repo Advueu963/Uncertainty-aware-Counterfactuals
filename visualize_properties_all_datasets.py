@@ -40,8 +40,8 @@ OPTIMIZER_LR = 0.2
 PROB_WEIGHT = 1
 LAMBDA_1 = 1
 LAMBDA_2 = 1
-MAX_STEPS = 5000
-PATIENCE = 100
+MAX_STEPS = 1000
+PATIENCE = 50
 DESIRED_CLASS = 1
 ENSEMBLE_MEMBER_COUNT = 20
 base_ensemble = [
@@ -119,71 +119,30 @@ PROPERTY_LOADERS = [
     (
         "validity",
         validity_loss_function,
-        {"MAX_STEPS": MAX_STEPS, "DESIRED_VALIDITY": DESIRED_VALIDITY},
     ),
     (
         "connected_ball",
         connected_loss_function,
-        {
-            "MAX_STEPS": MAX_STEPS,
-            "aleatoric_uncertainty_function": aleatoric_uncertainty_ensemble,
-            "epistemic_uncertainty_function": epistemic_uncertainty_ensemble,
-            "delta": DELTA,
-            "n_points": 10,
-            "DESIRED_VALIDITY": DESIRED_VALIDITY,
-        },
     ),
     (
         "robust",
         robust_loss_function,
-        {
-            "MAX_STEPS": MAX_STEPS,
-            "aleatoric_uncertainty_function": aleatoric_uncertainty_ensemble,
-            "epistemic_uncertainty_function": epistemic_uncertainty_ensemble,
-            "delta": DELTA,
-            "n_points": 10,
-            "DESIRED_VALIDITY": DESIRED_VALIDITY,
-        },
     ),
     (
         "feasability",
         feasable_loss_function,
-        {
-            "MAX_STEPS": MAX_STEPS,
-            "epistemic_uncertainty_function": epistemic_uncertainty_ensemble,
-            "delta": DELTA,
-            "n_points": 10,
-            "DESIRED_VALIDITY": DESIRED_VALIDITY,
-        },
     ),
     (
         "discriminative",
         discriminative_loss_function,
-        {
-            "MAX_STEPS": MAX_STEPS,
-            "aleatoric_uncertainty_function": aleatoric_uncertainty_ensemble,
-            "DESIRED_VALIDITY": DESIRED_VALIDITY,
-        },
     ),
     (
         "plausable",
         plausable_loss_function,
-        {
-            "MAX_STEPS": MAX_STEPS,
-            "epistemic_uncertainty_function": epistemic_uncertainty_ensemble,
-            "DESIRED_VALIDITY": DESIRED_VALIDITY,
-        },
     ),
     (
         "similarity",
         similarity_loss_function,
-        {
-            "MAX_STEPS": MAX_STEPS,
-            "aleatoric_uncertainty_function": aleatoric_uncertainty_ensemble,
-            "n_points": 10,
-            "DESIRED_VALIDITY": DESIRED_VALIDITY,
-            "delta": DELTA,
-        },
     ),
 ]
 
@@ -703,9 +662,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
     )
     print("-" * 40)
 
-    for j, (property_name, property_function, property_kwargs) in enumerate(
-        PROPERTY_LOADERS
-    ):
+    for j, (property_name, property_function) in enumerate(PROPERTY_LOADERS):
         print(f"Evaluating property: {property_name} on dataset: {dataset_name}")
 
         # Run the property procedure
