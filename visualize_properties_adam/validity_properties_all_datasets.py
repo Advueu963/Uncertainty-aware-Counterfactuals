@@ -1,7 +1,6 @@
 import pandas as pd
 import torch
 import numpy as np
-from carla.recourse_methods import GrowingSpheres, Clue, Dice, Face
 from epiuc.uncertainty.classification import MLP_Classifier
 from epiuc.uncertainty.wrapper import Ensemble_Classifier
 from data import (
@@ -26,9 +25,9 @@ from property_procedures.utils import (
     ensemble_probs,
     epistemic_uncertainty_ensemble,
     aleatoric_uncertainty_ensemble,
-    discriminative_power,
+    invalidity,
+    counter_factual_baseline,
 )
-from synthetic_to_carla import Synthetic_CARLA, MyOwnModel
 
 DESIRED_VALIDITY = 0.999
 DELTA = 0.5
@@ -154,162 +153,68 @@ def visualize_other_cf_methods(
     axes,
     dataset_name,
 ):
-    dataset = Synthetic_CARLA(dataset_name)
-
-    model = MyOwnModel(dataset)
-
-    # load artificial neural networke from catalog
-    # model = MLModelCatalog(dataset, "ann", backend="pytorch")
-
-    # load a recourse model and pass black box model
-    gs = GrowingSpheres(model)
-    clue = Clue(dataset, model)
-    dice = Dice(model)
-    fa = Face(model, {"mode": "knn", "fraction": 0.2})
-
-    point_of_interest_df = pd.DataFrame(
-        {
-            "x0": [p for p in [*point_of_interest[:, 0].detach().numpy()]],
-            "x1": [p for p in [*point_of_interest[:, 1].detach().numpy()]],
-            "label": [0] * (1),
-        }
+    (
+        counterfactuals_clue,
+        counterfactuals_dice,
+        counterfactuals_face,
+        counterfactuals_growing_sphere,
+    ) = counter_factual_baseline(
+        dataset_name,
+        point_of_interest,
+        n_models=ENSEMBLE_MEMBER_COUNT,
     )
-
-    # generate counterfactual examples
-    print("Factuals:")
-    print(point_of_interest_df)
-    counterfactuals_growing_sphere = gs.get_counterfactuals(point_of_interest_df)
-
-    counterfactuals_dice = dice.get_counterfactuals(point_of_interest_df)
-
-    # generate counterfactual examples using CLUE
-    try:
-        counterfactuals_clue = clue.get_counterfactuals(point_of_interest_df)
-        print(counterfactuals_clue)
-    except ValueError as e:
-        print(f"Error generating counterfactuals with CLUE: {e}")
-        counterfactuals_clue = None
-
-    try:
-        counterfactuals_face = fa.get_counterfactuals(point_of_interest_df)
-        print(counterfactuals_face)
-    except ValueError as e:
-        print(f"Error generating counterfactuals with Face: {e}")
-        counterfactuals_face = None
-
     # Compute the pairwise L2 distance between the counterfactuals
     if counterfactuals_growing_sphere is not None:
-        l2_distance_growing_sphere = discriminative_power(
-            point_of_interest.detach().numpy(),
-            torch.from_numpy(counterfactuals_growing_sphere.values[0]),
-            0,
-            DESIRED_CLASS,
-            points_poi,
-            points_desired_poi,
+        invalidity_gs = invalidity(
+            torch.from_numpy(counterfactuals_growing_sphere.values).float(),
+            model=ensemble_model,
+            probability_function=ensemble_probs,
+            desired_class=DESIRED_CLASS,
         )
     else:
-        l2_distance_growing_sphere = torch.tensor([-1], dtype=torch.float32)
+        invalidity_gs = torch.tensor([-1], dtype=torch.float32)
         print(
             "No counterfactuals found through Growing Spheres. Skipping distance calculation."
         )
 
     if counterfactuals_clue is not None:
-        l2_distance_clue = discriminative_power(
-            point_of_interest.detach().numpy(),
-            torch.from_numpy(counterfactuals_clue.values[0]),
-            0,
-            DESIRED_CLASS,
-            points_poi,
-            points_desired_poi,
+        invalidity_clue = invalidity(
+            torch.from_numpy(counterfactuals_clue.values).float(),
+            model=ensemble_model,
+            probability_function=ensemble_probs,
+            desired_class=DESIRED_CLASS,
         )
     else:
-        l2_distance_clue = torch.tensor([-1], dtype=torch.float32)
+        invalidity_clue = torch.tensor([-1], dtype=torch.float32)
         print("No counterfactuals found through CLUE. Skipping distance calculation.")
 
     if counterfactuals_dice is not None:
-        l2_distance_dice = discriminative_power(
-            point_of_interest.detach().numpy(),
-            torch.from_numpy(counterfactuals_dice.values[0]),
-            0,
-            DESIRED_CLASS,
-            points_poi,
-            points_desired_poi,
+        invalidity_dice = invalidity(
+            torch.from_numpy(counterfactuals_dice.values).float(),
+            model=ensemble_model,
+            probability_function=ensemble_probs,
+            desired_class=DESIRED_CLASS,
         )
     else:
-        l2_distance_dice = torch.tensor([-1], dtype=torch.float32)
+        invalidity_dice = torch.tensor([-1], dtype=torch.float32)
         print("No counterfactuals found through DICE. Skipping distance calculation.")
 
     if counterfactuals_face is not None:
-        l2_distance_face = discriminative_power(
-            point_of_interest.detach().numpy(),
-            torch.from_numpy(counterfactuals_face.values[0]),
-            0,
-            DESIRED_CLASS,
-            points_poi,
-            points_desired_poi,
+        invalidity_face = invalidity(
+            torch.from_numpy(counterfactuals_face.values),
+            model=ensemble_model,
+            probability_function=ensemble_probs,
+            desired_class=DESIRED_CLASS,
         )
     else:
-        l2_distance_face = torch.tensor([-1], dtype=torch.float32)
+        invalidity_face = torch.tensor([-1], dtype=torch.float32)
         print("No counterfactuals found through Face. Skipping distance calculation.")
 
-    for ax, cf, title in zip(
-        axes.flatten(),
-        [
-            counterfactuals_growing_sphere,
-            counterfactuals_clue,
-            counterfactuals_dice,
-            counterfactuals_face,
-        ],
-        ["Growing Spheres", "CLUE", "DICE", "Face"],
-    ):
-        if cf is None:
-            print(f"No counterfactuals found through {title}. Skipping visualization.")
-            continue
-        # visualize the data itself
-        ax.scatter(
-            points[y_labels == 0, 0],
-            points[y_labels == 0, 1],
-            marker="s",
-            s=2,
-            alpha=0.3,
-            color="blue",
-            label="Class 0",
-        )
-        ax.scatter(
-            points[y_labels == 1, 0],
-            points[y_labels == 1, 1],
-            marker="o",
-            s=2,
-            alpha=0.3,
-            color="red",
-            label="Class 1",
-        )
-        ax.scatter(
-            point_of_interest[:, 0].detach(),
-            point_of_interest[:, 1].detach(),
-            marker="s",
-            s=50,
-            alpha=0.6,
-            color="indigo",
-            label="Point of Interest",
-        )
-        ax.scatter(
-            cf.values[0:1, 0],
-            cf.values[0:1, 1],
-            marker="s",
-            s=50,
-            color="aqua",
-            label=f"CF_{title}",
-        )
-        ax.set_xlabel("X1")
-        ax.set_ylabel("X2")
-        ax.set_title(f"{dataset_name} - {title}")
-
     return (
-        l2_distance_growing_sphere,
-        l2_distance_clue,
-        l2_distance_dice,
-        l2_distance_face,
+        invalidity_gs,
+        invalidity_clue,
+        invalidity_dice,
+        invalidity_face,
     )
 
 
@@ -317,8 +222,8 @@ fig, axes = plt.subplots(
     len(DATASET_LOADERS), len(PROPERTY_LOADERS) + 3 + 2 + 1 + 4, figsize=(80, 40)
 )
 
-l2_distance_stable = []
-l2_distance_stable_std = []
+invalidity_cfs_mean = []
+invalidity_cfs_std = []
 for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LOADERS):
     print(f"Training ensemble on {dataset_name}...")
     points, y_labels, y_probs = loader(**kwargs)
@@ -338,7 +243,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
 
     # Train the ensemble model
     ensemble_model = Ensemble_Classifier(base_ensemble, n_models=ENSEMBLE_MEMBER_COUNT)
-    ensemble_model.load(f"models/Ensemble_{dataset_name.capitalize()}/")
+    ensemble_model.load(f"../models/Ensemble_{dataset_name.capitalize()}/")
 
     # Evaluate the ensemble model
     y_probs_ensemble, _ = ensemble_model.predict(points, raw_output=True)
@@ -354,8 +259,8 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
     )
     print("-" * 40)
 
-    l2_distance_stable.append([])
-    l2_distance_stable_std.append([])
+    invalidity_cfs_mean.append([])
+    invalidity_cfs_std.append([])
     for j, (property_name, property_function) in enumerate(PROPERTY_LOADERS):
         print(f"Evaluating property: {property_name} on dataset: {dataset_name}")
 
@@ -385,28 +290,26 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
             )
             cf_poi.append(counter_factual)
 
-        l2_distance = [
-            discriminative_power(
-                point_of_interest.detach().numpy(),
+        invalidity_cf_property = [
+            invalidity(
                 cf_poi[i].detach().numpy(),
-                0,
-                DESIRED_CLASS,
-                points_poi,
-                points_desired_poi,
+                model=ensemble_model,
+                probability_function=ensemble_probs,
+                desired_class=DESIRED_CLASS,
             )
             for i in range(len(cf_poi))
         ]
-        l2_distance_stable[-1].append(np.mean(l2_distance).item())
-        l2_distance_stable_std[-1].append(np.std(l2_distance).item())
+        invalidity_cfs_mean[-1].append(np.mean(invalidity_cf_property).item())
+        invalidity_cfs_std[-1].append(np.std(invalidity_cf_property).item())
 
     # Visualize other CF Methods
-    l2_distances_mean = []
+    invalidity_baselines_mean = []
     for _ in range(5):
         (
-            l2_distance_growing_sphere,
-            l2_distance_clue,
-            l2_distance_dice,
-            l2_distance_face,
+            invalidity_gs,
+            invalidity_clue,
+            invalidity_dice,
+            invalidity_face,
         ) = visualize_other_cf_methods(
             point_of_interest,
             points,
@@ -416,34 +319,34 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
             axes[i, -5:-1],
             dataset_name,
         )
-        l2_distances_mean.append(
+        invalidity_baselines_mean.append(
             [
-                l2_distance_growing_sphere.mean().item(),
-                l2_distance_clue.mean().item(),
-                l2_distance_dice.mean().item(),
-                l2_distance_face.mean().item(),
+                invalidity_gs.mean().item(),
+                invalidity_clue.mean().item(),
+                invalidity_dice.mean().item(),
+                invalidity_face.mean().item(),
             ]
         )
 
-    l2_distance_stable[-1] += [*np.mean(l2_distances_mean, axis=0)]
-    l2_distance_stable_std[-1] += [*np.std(l2_distances_mean, axis=0)]
-    print(l2_distance_stable[-1])
+    invalidity_cfs_mean[-1] += [*np.mean(invalidity_baselines_mean, axis=0)]
+    invalidity_cfs_std[-1] += [*np.std(invalidity_baselines_mean, axis=0)]
+    print(invalidity_cfs_mean[-1])
 
-l2_stability_data = pd.DataFrame(
+invalidity_data = pd.DataFrame(
     np.array(
         [
             [
                 f"{values} +/- {std}"
-                for values, std in zip(l2_distance_stable[i], l2_distance_stable_std[i])
+                for values, std in zip(invalidity_cfs_mean[i], invalidity_cfs_std[i])
             ]
-            for i in range(len(l2_distance_stable))
+            for i in range(len(invalidity_cfs_mean))
         ]
     ),
     index=[f"{dataset_name}" for dataset_name, _, _, _ in DATASET_LOADERS],
     columns=[property_name for property_name, _ in PROPERTY_LOADERS]
     + ["GS", "CLUE", "DICE", "FACE"],
 )
-print(l2_stability_data)
+print(invalidity_data)
 # Save the L2 stability data to a CSV file
-l2_stability_data.to_csv("discriminative_data.csv")
+invalidity_data.to_csv("validity_data.csv")
 # plt.show()

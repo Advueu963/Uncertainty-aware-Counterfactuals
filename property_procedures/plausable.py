@@ -20,9 +20,10 @@ def plausable_loss_function(
 
     target_probs = probs[0, desired_class]
 
-    loss = -p_weight * target_probs
+    loss = p_weight * target_probs
     if target_probs > 0.5:
-        loss = loss + lambda_1 * eu
+        loss = loss - lambda_1 * eu
+    loss = loss.mul(-1)
 
     loss.backward()
 

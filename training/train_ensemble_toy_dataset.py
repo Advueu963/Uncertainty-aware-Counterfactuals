@@ -11,6 +11,8 @@ from data import (
 )
 
 ENSEMBLE_MEMBER_COUNT = 20
+N_EPOCHS = 100
+BATCH_SIZE = 128
 base_ensemble = [
     MLP_Classifier(
         input_shape=2,
@@ -44,7 +46,7 @@ for dataset_name, loader, kwargs in DATASET_LOADERS:
     points, y_labels, y_probs = loader(**kwargs)
 
     # Train the ensemble model
-    ensemble_model.fit(points, y_labels, n_epochs=50, batch_size=128)
+    ensemble_model.fit(points, y_labels, n_epochs=N_EPOCHS, batch_size=BATCH_SIZE)
 
     # Evaluate the ensemble model
     y_probs_ensemble, _ = ensemble_model.predict(points, raw_output=True)
@@ -60,4 +62,4 @@ for dataset_name, loader, kwargs in DATASET_LOADERS:
     )
     print("-" * 40)
     # Save the model if needed
-    ensemble_model.save(f"models/Ensemble_{dataset_name.capitalize()}/")
+    ensemble_model.save(f"models/Ensemble_{dataset_name.capitalize()}_{N_EPOCHS}/")

@@ -28,15 +28,17 @@ def connected_loss_function(
     eu_delta_ball = epistemic_uncertainty_function(probs_ensemble_delta_ball)
 
     target_probs = probs[0, desired_class]
-    target_probs_delta_ball = probs_delta_ball[:, desired_class]
+    _ = probs_delta_ball[:, desired_class]
 
-    loss = -(p_weight * target_probs_delta_ball.mean())
+    loss = p_weight * target_probs
     if target_probs > 0.51:
-        loss = loss + lambda_1 * (eu_delta_ball.mean())
+        loss = loss - lambda_1 * (eu_delta_ball.mean())
+
+    loss = loss.mul(-1)
 
     loss.backward()
     if target_probs < 0.51:
-        grad = delta_ball.grad.mean(dim=0, keepdim=True)
+        grad = counter_factual.grad
     else:
-        grad = delta_ball.grad.mean(dim=0, keepdim=True)
+        grad = counter_factual.grad + delta_ball.grad.sum(dim=0)
     return loss, grad

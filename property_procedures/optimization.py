@@ -1,5 +1,5 @@
 import torch
-from torch.optim import Adam
+from torch.optim import Adam, SGD
 
 
 def counter_factual_optimization_routine(
@@ -19,10 +19,17 @@ def counter_factual_optimization_routine(
     patience=10,
     delta=0.1,
     n_points=10,
+    optimization_method="adam",
 ):
     counter_factual = point_to_explain.detach().clone().requires_grad_(True)
     counter_factual_steps = counter_factual.detach().clone()
-    optimizer = Adam([counter_factual], lr=lr)
+    # Initialize the optimizer
+    if optimization_method == "adam":
+        optimizer = Adam([counter_factual], lr=lr)
+    elif optimization_method == "sgd":
+        optimizer = SGD([counter_factual], lr=lr)
+    else:
+        raise ValueError("Unsupported optimization method. Use 'adam' or 'sgd'.")
 
     probs_ensemble = probability_function(model, counter_factual)
     probs = probs_ensemble.mean(dim=1)

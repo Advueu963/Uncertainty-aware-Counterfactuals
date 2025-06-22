@@ -1,18 +1,27 @@
 import pandas as pd
 import torch
+import os
 import numpy as np
 from carla.recourse_methods import GrowingSpheres, Clue, Dice, Face
 from epiuc.uncertainty.classification import MLP_Classifier
 from epiuc.uncertainty.wrapper import Ensemble_Classifier
-from data import load_noisy_datasets
+from data import (
+    load_l_dataset,
+    load_ring_dataset,
+    load_bubbles,
+    load_bubbles_noisy,
+    load_one_moon,
+    load_two_moon,
+    load_infinity_dataset,
+)
 from property_procedures import (
-    similarity_loss_function,
     validity_loss_function,
     connected_loss_function,
     robust_loss_function,
     feasable_loss_function,
     discriminative_loss_function,
     plausable_loss_function,
+    similarity_loss_function,
     counter_factual_optimization_routine,
 )
 import matplotlib.pyplot as plt
@@ -24,22 +33,22 @@ from property_procedures.utils import (
     total_uncertainty_ensemble,
     sample_delta_ball,
 )
-from synthetic_to_carla import Synthetic_CARLA_Noisy, MyOwnModel_Noisy
+from synthetic_to_carla import Synthetic_CARLA, MyOwnModel
 
 DESIRED_VALIDITY = 0.999
-DELTA = 0.1
-OPTIMIZER_LR = 0.2
+DELTA = 0.5
+OPTIMIZER_LR = 0.1
 PROB_WEIGHT = 1
 LAMBDA_1 = 1
 LAMBDA_2 = 1
-MAX_STEPS = 5000
+MAX_STEPS = 1000
 PATIENCE = 50
-N_POINTS = 10
 DESIRED_CLASS = 1
 ENSEMBLE_MEMBER_COUNT = 20
+N_POINTS = 50
 base_ensemble = [
     MLP_Classifier(
-        input_shape=10,
+        input_shape=2,
         n_classes=2,
         n_layers=2,
         num_neurons=64,
@@ -53,72 +62,58 @@ base_ensemble = [
 DATASET_LOADERS = [
     (
         "bubbles",
-        load_noisy_datasets,
+        load_bubbles,
         {"n_samples": 1000},
         torch.tensor(
-            np.array([3.9, 3.9] + [0] * 8).reshape(1, -1),
-            dtype=torch.float,
-            requires_grad=True,
+            np.array([3.9, 3.9]).reshape(-1, 2), dtype=torch.float, requires_grad=True
         ),
     ),
     (
         "l_dataset",
-        load_noisy_datasets,
+        load_l_dataset,
         {"n_samples": 333},
         torch.tensor(
-            np.array([0, 10] + [0] * 8).reshape(1, -1),
-            dtype=torch.float,
-            requires_grad=True,
+            np.array([0, 10]).reshape(-1, 2), dtype=torch.float, requires_grad=True
         ),
     ),
     (
         "one_moon",
-        load_noisy_datasets,
+        load_one_moon,
         {"n_samples": 1000},
         torch.tensor(
-            np.array([-1, 0] + [0] * 8).reshape(1, -1),
-            dtype=torch.float,
-            requires_grad=True,
+            np.array([-1, 0]).reshape(-1, 2), dtype=torch.float, requires_grad=True
         ),
     ),
     (
         "ring_dataset",
-        load_noisy_datasets,
+        load_ring_dataset,
         {"n_samples": 1000, "inner_radius": 1.0, "outer_radius": 2.0, "noise": 0.1},
         torch.tensor(
-            np.array([-1, -2] + [0] * 8).reshape(1, -1),
-            dtype=torch.float,
-            requires_grad=True,
+            np.array([-1, -2]).reshape(-1, 2), dtype=torch.float, requires_grad=True
         ),
     ),
     (
         "bubbles_noisy",
-        load_noisy_datasets,
+        load_bubbles_noisy,
         {"n_samples": 1000},
         torch.tensor(
-            np.array([2, 1] + [0] * 8).reshape(1, -1),
-            dtype=torch.float,
-            requires_grad=True,
+            np.array([2.5, 2.5]).reshape(-1, 2), dtype=torch.float, requires_grad=True
         ),
     ),
     (
         "two_moon",
-        load_noisy_datasets,
+        load_two_moon,
         {"n_samples": 1000},
         torch.tensor(
-            np.array([0, 1] + [0] * 8).reshape(1, -1),
-            dtype=torch.float,
-            requires_grad=True,
+            np.array([0, 1]).reshape(-1, 2), dtype=torch.float, requires_grad=True
         ),
     ),
     (
         "infinity_dataset",
-        load_noisy_datasets,
+        load_infinity_dataset,
         {"n_samples": 1000},
         torch.tensor(
-            np.array([2, 0] + [0] * 8).reshape(1, -1),
-            dtype=torch.float,
-            requires_grad=True,
+            np.array([2, 0]).reshape(-1, 2), dtype=torch.float, requires_grad=True
         ),
     ),
 ]
@@ -126,112 +121,46 @@ PROPERTY_LOADERS = [
     (
         "validity",
         validity_loss_function,
-        {"MAX_STEPS": MAX_STEPS, "DESIRED_VALIDITY": DESIRED_VALIDITY},
     ),
     (
         "connected_ball",
         connected_loss_function,
-        {
-            "MAX_STEPS": MAX_STEPS,
-            "aleatoric_uncertainty_function": aleatoric_uncertainty_ensemble,
-            "epistemic_uncertainty_function": epistemic_uncertainty_ensemble,
-            "delta": DELTA,
-            "n_points": 10,
-            "DESIRED_VALIDITY": DESIRED_VALIDITY,
-        },
     ),
     (
         "robust",
         robust_loss_function,
-        {
-            "MAX_STEPS": MAX_STEPS,
-            "aleatoric_uncertainty_function": aleatoric_uncertainty_ensemble,
-            "epistemic_uncertainty_function": epistemic_uncertainty_ensemble,
-            "delta": DELTA,
-            "n_points": 10,
-            "DESIRED_VALIDITY": DESIRED_VALIDITY,
-        },
     ),
     (
         "feasability",
         feasable_loss_function,
-        {
-            "MAX_STEPS": MAX_STEPS,
-            "epistemic_uncertainty_function": epistemic_uncertainty_ensemble,
-            "delta": DELTA,
-            "n_points": 10,
-            "DESIRED_VALIDITY": DESIRED_VALIDITY,
-        },
     ),
     (
         "discriminative",
         discriminative_loss_function,
-        {
-            "MAX_STEPS": MAX_STEPS,
-            "aleatoric_uncertainty_function": aleatoric_uncertainty_ensemble,
-            "DESIRED_VALIDITY": DESIRED_VALIDITY,
-        },
     ),
     (
         "plausable",
         plausable_loss_function,
-        {
-            "MAX_STEPS": MAX_STEPS,
-            "epistemic_uncertainty_function": epistemic_uncertainty_ensemble,
-            "DESIRED_VALIDITY": DESIRED_VALIDITY,
-        },
     ),
     (
         "similarity",
         similarity_loss_function,
-        {
-            "MAX_STEPS": MAX_STEPS,
-            "aleatoric_uncertainty_function": aleatoric_uncertainty_ensemble,
-            "n_points": 10,
-            "DESIRED_VALIDITY": DESIRED_VALIDITY,
-            "delta": DELTA,
-        },
     ),
-    # (
-    #     "stable",
-    #     stability_loss_function,
-    #     {
-    #         "MAX_STEPS": MAX_STEPS,
-    #         "aleatoric_uncertainty_function": aleatoric_uncertainty_ensemble,
-    #         "n_points": 10,
-    #         "DESIRED_VALIDITY": DESIRED_VALIDITY,
-    #         "delta": DELTA,
-    #     },
-    # ),
-    # (
-    #     "sparse",
-    #     sparse_loss_function,
-    #     {
-    #         "MAX_STEPS": MAX_STEPS,
-    #         "aleatoric_uncertainty_function": aleatoric_uncertainty_ensemble,
-    #         "n_points": 10,
-    #         "DESIRED_VALIDITY": DESIRED_VALIDITY,
-    #         "delta": DELTA,
-    #     },
-    # ),
+    # ("combined", combined_loss_function),
 ]
 
 
-def visualize_au_eu_tu(points, y_labels, axes):
+def visualize_au_eu_tu(points, y_labels, save_path):
+    fig, axes = plt.subplots(ncols=3, nrows=1, figsize=(12, 4))
+
     # Visualze AU, EU, TU
-    grid_points = np.linspace(points[:, :1].min() - 1, points[:, :1].max() + 1, 100)
+    grid_points = np.linspace(points.min() - 5, points.max() + 5, 100)
     xx, yy = np.meshgrid(grid_points, grid_points)
     grid_points = np.array([xx.flatten(), yy.flatten()]).T
-    # Add noise to grid_points
-    grid_points = torch.cat(
-        [
-            torch.tensor(grid_points, dtype=torch.float32),
-            torch.zeros((grid_points.shape[0], 8), dtype=torch.float32),
-        ],
-        dim=1,
-    )
     # Get the labels of the grid_points
-    y_probs_ensemble = ensemble_probs(ensemble_model, grid_points)
+    y_probs_ensemble = ensemble_probs(
+        ensemble_model, torch.tensor(grid_points, dtype=torch.float32)
+    )
     total_uncertainty = total_uncertainty_ensemble(y_probs_ensemble)
     aleatoric_uncertainty = aleatoric_uncertainty_ensemble(y_probs_ensemble)
     epistemic_uncertainty = epistemic_uncertainty_ensemble(y_probs_ensemble)
@@ -247,7 +176,7 @@ def visualize_au_eu_tu(points, y_labels, axes):
     cmap = mpl.cm.viridis
     plots = []
     for ax, values, title in zip(
-        axes,
+        axes.flatten(),
         [total_uncertainty, aleatoric_uncertainty, epistemic_uncertainty],
         ["TU", "AU", "EU"],
     ):
@@ -289,11 +218,14 @@ def visualize_au_eu_tu(points, y_labels, axes):
     # Single shared colorbar using one of the contour handles
     fig.colorbar(plots[0], ax=axes, shrink=0.8, label="Uncertainty Measure Value")
     print("_" * 40)
+    plt.savefig(
+        os.path.join(save_path, "uncertainty_visualization.pdf"), bbox_inches="tight"
+    )
 
 
 def visualze_path_with_underlying(
     model,
-    ax,
+    save_path,
     points,
     y_labels,
     point_of_interest,
@@ -306,12 +238,11 @@ def visualze_path_with_underlying(
     delta=1,
     n_points=10,
 ):
+    fig, ax = plt.subplots(figsize=(8, 8))
     # Create gird of points
-    grid_points = np.linspace(points.min() - 1, points.max() + 1, 100)
+    grid_points = np.linspace(points.min() - 2, points.max() + 2, 100)
     xx, yy = np.meshgrid(grid_points, grid_points)
     grid_points = np.array([xx.flatten(), yy.flatten()]).T
-    filler_val = np.zeros((grid_points.shape[0], 8))
-    grid_points = np.concatenate([grid_points, filler_val], axis=1)
 
     # Extract loss value
     tensor_points = torch.tensor(grid_points, dtype=torch.float32)
@@ -320,9 +251,7 @@ def visualze_path_with_underlying(
 
     # sample_ball
     delta_ball = sample_delta_ball(tensor_points.detach().numpy(), delta, n_points)
-    probs_ensemble_delta_ball = ensemble_probs(
-        model, delta_ball.view(-1, tensor_points.shape[1])
-    )
+    probs_ensemble_delta_ball = ensemble_probs(model, delta_ball.view(-1, 2))
     eu_delta_ball = epistemic_uncertainty_ensemble(probs_ensemble_delta_ball).view(
         n_points, -1
     )
@@ -330,14 +259,16 @@ def visualze_path_with_underlying(
         n_points, -1
     )
 
-    max_eu_ball = torch.max(eu_delta_ball, dim=0)[0]
-    max_au_ball = torch.max(au_delta_ball, dim=0)[0]
+    max_eu_ball = torch.mean(eu_delta_ball, dim=0)
+    max_au_ball = torch.mean(au_delta_ball, dim=0)
 
     combination = (
         PROB_WEIGHT * probs[:, DESIRED_CLASS]
         + lambda_1 * max_eu_ball
         + lambda_2 * max_au_ball
-    )
+    ).detach()
+    combination = combination - combination.min()  # Normalize to start from 0
+    combination = combination / combination.max()
 
     # Shared value range
     all_vals = torch.concatenate([combination], dim=0)
@@ -389,8 +320,8 @@ def visualze_path_with_underlying(
         counter_factual_steps[:, 0],
         counter_factual_steps[:, 1],
         marker=".",
-        s=3,
-        alpha=0.5,
+        s=25,
+        alpha=1,
         color="lime",
         label="CF Steps",
     )
@@ -399,44 +330,36 @@ def visualze_path_with_underlying(
     ax.set_title(f"{dataset_name} - {property_name}")
 
     # Unified contourf
-    _ = ax.contourf(
+    ax.contourf(
         xx,
         yy,
-        combination.detach().numpy().reshape(xx.shape),
+        combination.numpy().reshape(xx.shape),
         levels=levels,
         cmap=cmap,
         norm=norm,
         alpha=0.1,
     )
-    # Single shared colorbar using one of the contour handles
-    # fig.colorbar(contour, ax=axes, shrink=0.8, label="Uncertainty Measure Value")
+
+    plt.savefig(os.path.join(save_path, f"{property_name}.pdf"), bbox_inches="tight")
 
 
 # visualize how std of eu looks like aroung the points
-def visualize_eu_std_points(model, points, y_labels, axes, delta=1, n_points=10):
+def visualize_eu_std_points(model, points, y_labels, save_path, delta=1, n_points=10):
     """
     Visualize a given point and its AU, EU, and TU.
     """
+    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 5))
     # Create gird of points
     grid_points = np.linspace(points.min() - 5, points.max() + 5, 100)
     xx, yy = np.meshgrid(grid_points, grid_points)
     grid_points = np.array([xx.flatten(), yy.flatten()]).T
-    # Add noise to grid_points
-    grid_points = torch.cat(
-        [
-            torch.tensor(grid_points, dtype=torch.float32),
-            torch.zeros((grid_points.shape[0], 8), dtype=torch.float32),
-        ],
-        dim=1,
-    )
+
     # Extract loss value
     tensor_points = torch.tensor(grid_points, dtype=torch.float32)
 
     # sample_ball
     delta_ball = sample_delta_ball(tensor_points.detach().numpy(), delta, n_points)
-    probs_ensemble_delta_ball = ensemble_probs(
-        model, delta_ball.view(-1, tensor_points.shape[1])
-    )
+    probs_ensemble_delta_ball = ensemble_probs(model, delta_ball.view(-1, 2))
     eu_delta_ball = epistemic_uncertainty_ensemble(probs_ensemble_delta_ball).view(
         n_points, -1
     )
@@ -500,33 +423,33 @@ def visualize_eu_std_points(model, points, y_labels, axes, delta=1, n_points=10)
     # Single shared colorbar using one of the contour handles
     fig.colorbar(plots[0], ax=axes, shrink=0.8, label="Uncertainty Measure Value")
 
+    plt.savefig(
+        os.path.join(save_path, "uncertainty_ball_visualization.pdf"),
+        bbox_inches="tight",
+    )
+
 
 def visualize_decision_boundry(
-    points, model, y_labels, probability_function=ensemble_probs
+    points, model, y_labels, save_path, probability_function=ensemble_probs
 ):
+    fig, ax = plt.subplots(figsize=(12, 8))
     # Visualize decision boundary
     xx, yy = np.meshgrid(
-        np.linspace(points[:, 0].min() - 1, points[:, 0].max() + 1, 100),
-        np.linspace(points[:, 1].min() - 1, points[:, 1].max() + 1, 100),
+        np.linspace(points[:, 0].min() - 2, points[:, 0].max() + 2, 100),
+        np.linspace(points[:, 1].min() - 2, points[:, 1].max() + 2, 100),
     )
     grid_points = np.c_[xx.ravel(), yy.ravel()]
-    grid_points = torch.cat(
-        [
-            torch.tensor(grid_points, dtype=torch.float32),
-            torch.zeros((grid_points.shape[0], 8), dtype=torch.float32),
-        ],
-        dim=1,
+    grid_probs_ensemble = probability_function(
+        model, torch.tensor(grid_points, dtype=torch.float32)
     )
-    grid_probs_ensemble = probability_function(model, grid_points)
     grid_probs = grid_probs_ensemble.mean(dim=1)
     grid_labels = grid_probs.argmax(dim=1).numpy()
     grid_labels = grid_labels.reshape(xx.shape)
-
-    axes[i, -1].contourf(xx, yy, grid_labels, alpha=0.5, cmap="coolwarm")
-    axes[i, -1].set_title(f"Decision Boundary - {dataset_name}")
-    axes[i, -1].set_xlabel("X1")
-    axes[i, -1].set_ylabel("X2")
-    axes[i, -1].scatter(
+    ax.contourf(xx, yy, grid_labels, alpha=0.5, cmap="coolwarm")
+    ax.set_title(f"Decision Boundary - {dataset_name}")
+    ax.set_xlabel("X1")
+    ax.set_ylabel("X2")
+    ax.scatter(
         points[y_labels == 0, 0],
         points[y_labels == 0, 1],
         marker="s",
@@ -535,7 +458,7 @@ def visualize_decision_boundry(
         color="blue",
         label="Class 0",
     )
-    axes[i, -1].scatter(
+    ax.scatter(
         points[y_labels == 1, 0],
         points[y_labels == 1, 1],
         marker="o",
@@ -544,16 +467,21 @@ def visualize_decision_boundry(
         color="red",
         label="Class 1",
     )
-    axes[i, -1].legend()
-    axes[i, -1].set_xlim(points[:, 0].min() - 1, points[:, 0].max() + 1)
-    axes[i, -1].set_ylim(points[:, 1].min() - 1, points[:, 1].max() + 1)
+    ax.legend()
+    ax.set_xlim(points[:, 0].min() - 1, points[:, 0].max() + 1)
+    ax.set_ylim(points[:, 1].min() - 1, points[:, 1].max() + 1)
     print("_" * 40)
 
+    plt.savefig(os.path.join(save_path, "decision_boundary.pdf"), bbox_inches="tight")
 
-def visualize_other_cf_methods(point_of_interest, points, y_labels, axes, dataset_name):
-    dataset = Synthetic_CARLA_Noisy(dataset_name)
 
-    model = MyOwnModel_Noisy(dataset, n_models=ENSEMBLE_MEMBER_COUNT, input_shape=10)
+def visualize_other_cf_methods(
+    point_of_interest, points, y_labels, save_path, dataset_name
+):
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12, 10))
+    dataset = Synthetic_CARLA(dataset_name)
+
+    model = MyOwnModel(dataset, n_models=ENSEMBLE_MEMBER_COUNT)
 
     # load artificial neural networke from catalog
     # model = MLModelCatalog(dataset, "ann", backend="pytorch")
@@ -568,14 +496,6 @@ def visualize_other_cf_methods(point_of_interest, points, y_labels, axes, datase
         {
             "x0": point_of_interest[:, 0].detach().numpy(),
             "x1": point_of_interest[:, 1].detach().numpy(),
-            "noise_0": point_of_interest[:, 2].detach().numpy(),
-            "noise_1": point_of_interest[:, 3].detach().numpy(),
-            "noise_2": point_of_interest[:, 4].detach().numpy(),
-            "noise_3": point_of_interest[:, 5].detach().numpy(),
-            "noise_4": point_of_interest[:, 6].detach().numpy(),
-            "noise_5": point_of_interest[:, 7].detach().numpy(),
-            "noise_6": point_of_interest[:, 8].detach().numpy(),
-            "noise_7": point_of_interest[:, 9].detach().numpy(),
             "label": 1,
         }
     )
@@ -593,7 +513,7 @@ def visualize_other_cf_methods(point_of_interest, points, y_labels, axes, datase
             print(f"Error generating counterfactuals with Growing Spheres: {e}")
             counterfactuals_growing_sphere = None
 
-    for _ in range(10):
+    for _ in range(5):
         try:
             counterfactuals_dice = dice.get_counterfactuals(point_of_interest_df)
             break
@@ -602,7 +522,7 @@ def visualize_other_cf_methods(point_of_interest, points, y_labels, axes, datase
             counterfactuals_dice = None
 
     # generate counterfactual examples using CLUE
-    for _ in range(10):
+    for _ in range(5):
         try:
             counterfactuals_clue = clue.get_counterfactuals(point_of_interest_df)
             print(counterfactuals_clue)
@@ -613,7 +533,7 @@ def visualize_other_cf_methods(point_of_interest, points, y_labels, axes, datase
             # If an error occurs, you might want to handle it or retry
             # For example, you could log the error or adjust parameters
 
-    for _ in range(10):
+    for _ in range(5):
         try:
             counterfactuals_face = fa.get_counterfactuals(point_of_interest_df)
             print(counterfactuals_face)
@@ -677,18 +597,21 @@ def visualize_other_cf_methods(point_of_interest, points, y_labels, axes, datase
         ax.set_ylabel("X2")
         ax.set_title(f"{dataset_name} - {title}")
 
+    plt.savefig(os.path.join(save_path, "other_cf_methods.pdf"), bbox_inches="tight")
 
-fig, axes = plt.subplots(
-    len(DATASET_LOADERS), len(PROPERTY_LOADERS) + 3 + 2 + 1 + 4, figsize=(90, 45)
-)
 
+FOLDER = "individual_datasets"
 for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LOADERS):
     print(f"Training ensemble on {dataset_name}...")
-    points, y_labels, y_probs = loader(dataset_name, **kwargs)
+    points, y_labels, y_probs = loader(**kwargs)
 
     # Train the ensemble model
     ensemble_model = Ensemble_Classifier(base_ensemble, n_models=ENSEMBLE_MEMBER_COUNT)
-    ensemble_model.load(f"models/Ensemble_{dataset_name.capitalize()}_extended/")
+    ensemble_model.load(f"models/Ensemble_{dataset_name.capitalize()}/")
+
+    dataset_folder = os.path.join(FOLDER, dataset_name)
+    if not os.path.exists(dataset_folder):
+        os.makedirs(dataset_folder)
 
     # Evaluate the ensemble model
     y_probs_ensemble, _ = ensemble_model.predict(points, raw_output=True)
@@ -704,9 +627,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
     )
     print("-" * 40)
 
-    for j, (property_name, property_function, property_kwargs) in enumerate(
-        PROPERTY_LOADERS
-    ):
+    for j, (property_name, property_function) in enumerate(PROPERTY_LOADERS):
         print(f"Evaluating property: {property_name} on dataset: {dataset_name}")
 
         # Run the property procedure
@@ -733,7 +654,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
             case "validity":
                 visualze_path_with_underlying(
                     ensemble_model,
-                    axes[i, j],
+                    dataset_folder,
                     points,
                     y_labels,
                     point_of_interest,
@@ -744,28 +665,28 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
                     dataset_name,
                     property_name,
                     delta=DELTA,
-                    n_points=10,
+                    n_points=N_POINTS,
                 )
             case "connected_ball":
                 visualze_path_with_underlying(
                     ensemble_model,
-                    axes[i, j],
+                    dataset_folder,
                     points,
                     y_labels,
                     point_of_interest,
                     counter_factual,
                     counter_factual_steps,
                     -LAMBDA_1,
-                    LAMBDA_2,
+                    0,
                     dataset_name,
                     property_name,
                     delta=DELTA,
-                    n_points=10,
+                    n_points=N_POINTS,
                 )
             case "robust":
                 visualze_path_with_underlying(
                     ensemble_model,
-                    axes[i, j],
+                    dataset_folder,
                     points,
                     y_labels,
                     point_of_interest,
@@ -776,12 +697,12 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
                     dataset_name,
                     property_name,
                     delta=DELTA,
-                    n_points=10,
+                    n_points=N_POINTS,
                 )
             case "feasability":
                 visualze_path_with_underlying(
                     ensemble_model,
-                    axes[i, j],
+                    dataset_folder,
                     points,
                     y_labels,
                     point_of_interest,
@@ -792,12 +713,12 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
                     dataset_name,
                     property_name,
                     delta=DELTA,
-                    n_points=10,
+                    n_points=N_POINTS,
                 )
             case "discriminative":
                 visualze_path_with_underlying(
                     ensemble_model,
-                    axes[i, j],
+                    dataset_folder,
                     points,
                     y_labels,
                     point_of_interest,
@@ -808,12 +729,12 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
                     dataset_name,
                     property_name,
                     delta=1e-8,
-                    n_points=10,
+                    n_points=N_POINTS,
                 )
             case "plausable":
                 visualze_path_with_underlying(
                     ensemble_model,
-                    axes[i, j],
+                    dataset_folder,
                     points,
                     y_labels,
                     point_of_interest,
@@ -824,12 +745,12 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
                     dataset_name,
                     property_name,
                     delta=1e-8,
-                    n_points=10,
+                    n_points=N_POINTS,
                 )
             case "similarity":
                 visualze_path_with_underlying(
                     ensemble_model,
-                    axes[i, j],
+                    dataset_folder,
                     points,
                     y_labels,
                     point_of_interest,
@@ -840,28 +761,12 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
                     dataset_name,
                     property_name,
                     delta=DELTA,
-                    n_points=10,
+                    n_points=N_POINTS,
                 )
-            case "stable":
+            case "combined":
                 visualze_path_with_underlying(
                     ensemble_model,
-                    axes[i, j],
-                    points,
-                    y_labels,
-                    point_of_interest,
-                    counter_factual,
-                    counter_factual_steps,
-                    LAMBDA_1,
-                    LAMBDA_2,
-                    dataset_name,
-                    property_name,
-                    delta=DELTA,
-                    n_points=10,
-                )
-            case "sparse":
-                visualze_path_with_underlying(
-                    ensemble_model,
-                    axes[i, j],
+                    dataset_folder,
                     points,
                     y_labels,
                     point_of_interest,
@@ -872,27 +777,28 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
                     dataset_name,
                     property_name,
                     delta=DELTA,
-                    n_points=10,
+                    n_points=N_POINTS,
                 )
     print(f"Visualizing AU, EU, TU for dataset: {dataset_name}")
-    visualize_au_eu_tu(points, y_labels, axes[i, -10:-7])
+    visualize_au_eu_tu(points, y_labels, dataset_folder)
 
     # Visualize the MAX EU and AU globally
     visualize_eu_std_points(
-        ensemble_model, points, y_labels, axes[i, -7:-5], delta=DELTA, n_points=10
+        ensemble_model, points, y_labels, dataset_folder, delta=DELTA, n_points=10
     )
 
     print(f"Visualize other CF Methods for dataset: {dataset_name}")
     # Visualize other CF Methods
     visualize_other_cf_methods(
-        point_of_interest, points, y_labels, axes[i, -5:-1], dataset_name
+        point_of_interest, points, y_labels, dataset_folder, dataset_name
     )
 
     print(f"Visualize decision boundary for dataset: {dataset_name}")
     visualize_decision_boundry(
-        points, ensemble_model, y_labels, probability_function=ensemble_probs
+        points,
+        ensemble_model,
+        y_labels,
+        dataset_folder,
+        probability_function=ensemble_probs,
     )
-
-
-plt.savefig("visualize_properties_all_datasets_noisy.png")
-# plt.show()
+    print(f"Finished processing dataset: {dataset_name}")

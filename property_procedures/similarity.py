@@ -1,4 +1,4 @@
-from property_procedures.utils import sample_line, sample_delta_ball
+from property_procedures.utils import sample_delta_ball
 
 
 def similarity_loss_function(
@@ -20,24 +20,20 @@ def similarity_loss_function(
     probs_ensemble = probability_function(model, counter_factual)
     probs = probs_ensemble.mean(dim=1)
 
-    reference_point = point_to_explain.clone().detach().requires_grad_(True)
-
     # sample ball
     delta_ball = sample_delta_ball(counter_factual.detach().numpy(), delta, n_points)
     probs_ensemble_delta_ball = probability_function(model, delta_ball)
     au_delta_ball = aleatoric_uncertainty_function(probs_ensemble_delta_ball)
 
-    # sample_ball
-    sampled_line_points = sample_line(
-        counter_factual, reference_point, num_samples=n_points
-    )
-    probs_ensemble_line_points = probability_function(model, sampled_line_points)
-    _ = aleatoric_uncertainty_function(probs_ensemble_line_points)
-
     target_probs = probs[0, desired_class]
     # Calculate the loss
-    loss = p_weight * (-target_probs) - lambda_2 * au_delta_ball.max()
+    loss = p_weight * target_probs
+    if target_probs > 0.5:
+        loss = loss + lambda_2 * au_delta_ball.max()
+    loss = loss.mul(-1)
 
     loss.backward()
 
-    return loss, counter_factual.grad + delta_ball.grad.sum(dim=0, keepdim=True)
+    return loss, counter_factual.grad + (
+        delta_ball.grad.sum(dim=0, keepdim=True) if delta_ball.grad is not None else 0
+    )

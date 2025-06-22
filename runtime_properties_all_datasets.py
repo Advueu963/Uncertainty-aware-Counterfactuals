@@ -18,12 +18,10 @@ from data import (
 from property_procedures import (
     similarity_loss_function,
     validity_loss_function,
-    connected_loss_function,
     robust_loss_function,
     feasable_loss_function,
-    discriminative_loss_function,
-    plausable_loss_function,
     counter_factual_optimization_routine,
+    combined_loss_function,
 )
 import matplotlib.pyplot as plt
 from property_procedures.utils import (
@@ -34,16 +32,16 @@ from property_procedures.utils import (
 from synthetic_to_carla import Synthetic_CARLA, MyOwnModel
 
 DESIRED_VALIDITY = 0.999
-DELTA = 0.1
-OPTIMIZER_LR = 0.2
+DELTA = 0.5
+OPTIMIZER_LR = 0.1
 PROB_WEIGHT = 1
 LAMBDA_1 = 1
 LAMBDA_2 = 1
-MAX_STEPS = 5000
+MAX_STEPS = 1000
 PATIENCE = 50
 DESIRED_CLASS = 1
 ENSEMBLE_MEMBER_COUNT = 20
-N_POINTS = 500
+N_POINTS = 50
 base_ensemble = [
     MLP_Classifier(
         input_shape=2,
@@ -119,74 +117,32 @@ PROPERTY_LOADERS = [
     (
         "validity",
         validity_loss_function,
-        {"MAX_STEPS": MAX_STEPS, "DESIRED_VALIDITY": DESIRED_VALIDITY},
     ),
-    (
-        "connected_ball",
-        connected_loss_function,
-        {
-            "MAX_STEPS": MAX_STEPS,
-            "aleatoric_uncertainty_function": aleatoric_uncertainty_ensemble,
-            "epistemic_uncertainty_function": epistemic_uncertainty_ensemble,
-            "delta": DELTA,
-            "n_points": 10,
-            "DESIRED_VALIDITY": DESIRED_VALIDITY,
-        },
-    ),
+    # (
+    #     "connected_ball",
+    #     connected_loss_function,
+    # ),
     (
         "robust",
         robust_loss_function,
-        {
-            "MAX_STEPS": MAX_STEPS,
-            "aleatoric_uncertainty_function": aleatoric_uncertainty_ensemble,
-            "epistemic_uncertainty_function": epistemic_uncertainty_ensemble,
-            "delta": DELTA,
-            "n_points": 10,
-            "DESIRED_VALIDITY": DESIRED_VALIDITY,
-        },
     ),
     (
         "feasability",
         feasable_loss_function,
-        {
-            "MAX_STEPS": MAX_STEPS,
-            "epistemic_uncertainty_function": epistemic_uncertainty_ensemble,
-            "delta": DELTA,
-            "n_points": 10,
-            "DESIRED_VALIDITY": DESIRED_VALIDITY,
-        },
     ),
-    (
-        "discriminative",
-        discriminative_loss_function,
-        {
-            "MAX_STEPS": MAX_STEPS,
-            "aleatoric_uncertainty_function": aleatoric_uncertainty_ensemble,
-            "DESIRED_VALIDITY": DESIRED_VALIDITY,
-        },
-    ),
-    (
-        "plausable",
-        plausable_loss_function,
-        {
-            "MAX_STEPS": MAX_STEPS,
-            "epistemic_uncertainty_function": epistemic_uncertainty_ensemble,
-            "DESIRED_VALIDITY": DESIRED_VALIDITY,
-        },
-    ),
+    # (
+    #     "discriminative",
+    #     discriminative_loss_function,
+    # ),
+    # (
+    #     "plausable",
+    #     plausable_loss_function,
+    # ),
     (
         "similarity",
         similarity_loss_function,
-        {
-            "MAX_STEPS": MAX_STEPS,
-            "aleatoric_uncertainty_function": aleatoric_uncertainty_ensemble,
-            "n_points": 10,
-            "DESIRED_VALIDITY": DESIRED_VALIDITY,
-            "delta": DELTA,
-        },
     ),
-    # ("stable", stability_loss_function, {"MAX_STEPS": MAX_STEPS, "aleatoric_uncertainty_function": aleatoric_uncertainty_ensemble, "n_points": 10,
-    #   "DESIRED_VALIDITY": DESIRED_VALIDITY, "delta": DELTA})
+    ("combined", combined_loss_function),
 ]
 
 
@@ -277,9 +233,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
 
     l2_distance_stable.append([])
     l2_distance_stable_std.append([])
-    for j, (property_name, property_function, property_kwargs) in enumerate(
-        PROPERTY_LOADERS
-    ):
+    for j, (property_name, property_function) in enumerate(PROPERTY_LOADERS):
         print(f"Evaluating property: {property_name} on dataset: {dataset_name}")
 
         # Run the property procedure
@@ -336,7 +290,7 @@ l2_stability_data = pd.DataFrame(
         ]
     ),
     index=[f"{dataset_name}" for dataset_name, _, _, _ in DATASET_LOADERS],
-    columns=[property_name for property_name, _, _ in PROPERTY_LOADERS]
+    columns=[property_name for property_name, _ in PROPERTY_LOADERS]
     + ["GS", "CLUE", "DICE", "FACE"],
 )
 print(l2_stability_data)

@@ -240,7 +240,7 @@ def load_infinity_dataset(n_samples=1000):
     return X, y_labels, y_probs
 
 
-def load_noisy_datasets(dataset_name, **kwargs):
+def load_datasets(dataset_name, noisy=False, **kwargs):
     if dataset_name == "one_moon":
         X, y_labels, y_probs = load_one_moon(**kwargs)
     elif dataset_name == "two_moon":
@@ -260,8 +260,10 @@ def load_noisy_datasets(dataset_name, **kwargs):
     else:
         raise ValueError(f"Unknown dataset name: {dataset_name}")
 
-    # Now extend 8 features that are just noise
-    torch.manual_seed(42)
-    noise_features = torch.distributions.Normal(0, 1).sample((X.shape[0], 8))
-    X_extended = torch.cat((X, noise_features), dim=1)
-    return X_extended, y_labels, y_probs
+    if noisy:
+        # Now extend 8 features that are just noise
+        torch.manual_seed(42)
+        noise_features = torch.distributions.Normal(0, 1).sample((X.shape[0], 8))
+        X_extended = torch.cat((X, noise_features), dim=1)
+        return X_extended, y_labels, y_probs
+    return X, y_labels, y_probs

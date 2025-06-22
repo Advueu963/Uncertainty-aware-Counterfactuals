@@ -25,7 +25,8 @@ def validity_loss_function(
     # else:
     #     loss = -(p_weight * target_probs)
 
-    loss = -(p_weight * target_probs)
+    loss = p_weight * target_probs
+    loss = loss.mul(-1)
 
     loss.backward()
 

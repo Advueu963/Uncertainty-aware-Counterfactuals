@@ -1,6 +1,3 @@
-from property_procedures.utils import sample_delta_ball
-
-
 def sparse_loss_function(
     point_to_explain,
     counter_factual,
@@ -17,25 +14,15 @@ def sparse_loss_function(
     start_cf_construction=False,
 ):
     probs_ensemble_cf = probability_function(model, counter_factual)
-    target_probs_cf = probs_ensemble_cf.mean(dim=1)[0, desired_class]
 
-    delt_ball_cf = sample_delta_ball(counter_factual.detach().numpy(), delta, n_points)
+    au_cf = aleatoric_uncertainty_function(probs_ensemble_cf)
+
     #
     # # Extract loss value
-    probs_ensemble_delta_ball = probability_function(model, delt_ball_cf)
-    au_delta_ball = aleatoric_uncertainty_function(probs_ensemble_delta_ball)
-
-    differences = au_delta_ball.std(dim=0)
-
-    if target_probs_cf < 0.5:
-        # negative loss to increase the uncertainty
-        loss = -(differences)
-    else:
-        # positive loss to then decrease the uncertainty
-        loss = differences
+    loss = -(p_weight * au_cf)
     loss.backward()
 
     # pick the grad of the point with the largest difference
-    grad = delt_ball_cf.grad.mean(dim=0).view(1, *counter_factual.shape[1:])
+    grad = counter_factual.grad
 
     return loss, grad

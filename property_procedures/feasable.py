@@ -31,7 +31,9 @@ def feasable_loss_function(
     target_probs = probs[0, desired_class]
 
     # loss = -target_probs + t*tu_point
-    loss = -(p_weight * target_probs) + lambda_1 * (eu_delta_ball.mean())
+    loss = (p_weight * target_probs) - lambda_1 * (eu_delta_ball.mean())
+    loss = loss.mul(-1)
+
     # loss = (1-lam)*(-target_probs_delta_ball.mean()) + lam*tu_delta_ball.std()
 
     loss.backward()
