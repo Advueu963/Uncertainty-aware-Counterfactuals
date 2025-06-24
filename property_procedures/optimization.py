@@ -66,14 +66,12 @@ def counter_factual_optimization_routine(
         probs = probs_ensemble.mean(dim=1)
         target_probs = probs[0, desired_class]
 
-        if probs[0, 0] > 0.95:
-            # Once the loss is low enough, we assume that the model is confident about the class of point_of_interest
-            # Now we construct the counter factual
-            start_cf_construction = True
-            patience_counter = 0
-
         # Check for early stopping
-        if abs(prior_loss - loss.item()) < 0.01:
+        if target_probs > 0.5:
+            start_cf_construction = True
+        if abs(prior_loss - loss.item()) < 0.01 and start_cf_construction:
+            patience_counter += 1
+        elif abs(prior_loss - loss.item()) < 0.001:
             patience_counter += 1
         else:
             patience_counter = 0

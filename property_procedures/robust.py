@@ -30,16 +30,17 @@ def robust_loss_function(
     target_probs = probs[0, desired_class]
 
     # Calculate the loss
-    if target_probs < 0.51:
-        loss = -(p_weight * target_probs_delta_ball.mean())
-    else:
-        loss = +lambda_1 * (eu_delta_ball.max()) + lambda_2 * (au_delta_ball.max())
+    loss = -(p_weight * target_probs_delta_ball.sum())
+    if target_probs > 0.51:
+        loss = (
+            loss + lambda_1 * (eu_delta_ball.mean()) + lambda_2 * (au_delta_ball.mean())
+        )
 
     loss.backward()
 
     if target_probs < 0.51:
         grad = delta_ball.grad.mean(dim=0, keepdim=True)
     else:
-        grad = delta_ball.grad.sum(dim=0, keepdim=True)
+        grad = delta_ball.grad.mean(dim=0, keepdim=True)
 
     return loss, grad

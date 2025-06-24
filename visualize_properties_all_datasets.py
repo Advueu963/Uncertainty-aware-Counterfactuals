@@ -35,8 +35,8 @@ from property_procedures.utils import (
 from synthetic_to_carla import Synthetic_CARLA, MyOwnModel
 
 DESIRED_VALIDITY = 0.999
-DELTA = 0.1
-OPTIMIZER_LR = 0.2
+DELTA = 0.5
+OPTIMIZER_LR = 0.1
 PROB_WEIGHT = 1
 LAMBDA_1 = 1
 LAMBDA_2 = 1
@@ -44,6 +44,7 @@ MAX_STEPS = 1000
 PATIENCE = 50
 DESIRED_CLASS = 1
 ENSEMBLE_MEMBER_COUNT = 20
+N_POINTS = 50
 base_ensemble = [
     MLP_Classifier(
         input_shape=2,
@@ -676,7 +677,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
             epistemic_uncertainty_function=epistemic_uncertainty_ensemble,
             MAX_STEPS=MAX_STEPS,
             delta=DELTA,
-            n_points=10,
+            n_points=N_POINTS,
             lr=OPTIMIZER_LR,
             DESIRED_VALIDITY=DESIRED_VALIDITY,
             p_weight=PROB_WEIGHT,
@@ -700,7 +701,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
                     dataset_name,
                     property_name,
                     delta=DELTA,
-                    n_points=10,
+                    n_points=N_POINTS,
                 )
             case "connected_ball":
                 visualze_path_with_underlying(
@@ -712,11 +713,11 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
                     counter_factual,
                     counter_factual_steps,
                     -LAMBDA_1,
-                    LAMBDA_2,
+                    0,
                     dataset_name,
                     property_name,
                     delta=DELTA,
-                    n_points=10,
+                    n_points=N_POINTS,
                 )
             case "robust":
                 visualze_path_with_underlying(
@@ -732,7 +733,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
                     dataset_name,
                     property_name,
                     delta=DELTA,
-                    n_points=10,
+                    n_points=N_POINTS,
                 )
             case "feasability":
                 visualze_path_with_underlying(
@@ -748,7 +749,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
                     dataset_name,
                     property_name,
                     delta=DELTA,
-                    n_points=10,
+                    n_points=N_POINTS,
                 )
             case "discriminative":
                 visualze_path_with_underlying(
@@ -764,7 +765,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
                     dataset_name,
                     property_name,
                     delta=1e-8,
-                    n_points=10,
+                    n_points=N_POINTS,
                 )
             case "plausable":
                 visualze_path_with_underlying(
@@ -780,7 +781,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
                     dataset_name,
                     property_name,
                     delta=1e-8,
-                    n_points=10,
+                    n_points=N_POINTS,
                 )
             case "similarity":
                 visualze_path_with_underlying(
@@ -796,7 +797,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
                     dataset_name,
                     property_name,
                     delta=DELTA,
-                    n_points=10,
+                    n_points=N_POINTS,
                 )
             case "stable":
                 visualze_path_with_underlying(
@@ -812,7 +813,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
                     dataset_name,
                     property_name,
                     delta=DELTA,
-                    n_points=10,
+                    n_points=N_POINTS,
                 )
             case "sparse":
                 visualze_path_with_underlying(
@@ -828,7 +829,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
                     dataset_name,
                     property_name,
                     delta=DELTA,
-                    n_points=10,
+                    n_points=N_POINTS,
                 )
     print(f"Visualizing AU, EU, TU for dataset: {dataset_name}")
     visualize_au_eu_tu(points, y_labels, axes[i, -10:-7])
