@@ -27,9 +27,9 @@ def similarity_loss_function(
 
     target_probs = probs[0, desired_class]
     # Calculate the loss
-    loss = p_weight * target_probs
+    loss = p_weight * target_probs.log2()
     if target_probs > 0.5:
-        loss = loss + lambda_2 * au_delta_ball.max()
+        loss = loss + lambda_2 * au_delta_ball.max().log2()
     loss = loss.mul(-1)
 
     loss.backward()

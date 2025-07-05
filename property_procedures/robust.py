@@ -31,12 +31,9 @@ def robust_loss_function(
 
     # Calculate the loss
     loss = p_weight * target_probs.log2()
+
     if target_probs > 0.51:
-        loss = (
-            loss.exp()
-            - lambda_1 * (eu_delta_ball.mean().log2())
-            - (lambda_2 * au_delta_ball.mean().exp())
-        )
+        loss = loss - lambda_1 * (eu_delta_ball + au_delta_ball).mean().log2()
     loss = loss.mul(-1)
     loss.backward()
 

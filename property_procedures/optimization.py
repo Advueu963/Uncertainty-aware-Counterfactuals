@@ -65,6 +65,12 @@ def counter_factual_optimization_routine(
         )
 
         counter_factual.grad = grad
+
+        # most_salient = grad.abs().argmax().item()
+        # update_grad = torch.zeros_like(grad)
+        # update_grad[0,most_salient] = (-1)**(grad[0,most_salient] < 0)
+        # counter_factual.grad = update_grad
+
         optimizer.step()
         # print(counter_factual,au, t)
 
@@ -74,11 +80,7 @@ def counter_factual_optimization_routine(
         target_probs = probs[0, desired_class]
 
         # Check for early stopping
-        if target_probs > 0.5:
-            start_cf_construction = True
-        if abs(prior_loss - loss.item()) < 0.01 and start_cf_construction:
-            patience_counter += 1
-        elif abs(prior_loss - loss.item()) < 0.001:
+        if abs(prior_loss - loss.item()) < 0.01:
             patience_counter += 1
         else:
             patience_counter = 0

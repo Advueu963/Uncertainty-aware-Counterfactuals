@@ -20,6 +20,7 @@ from property_procedures import (
     plausable_loss_function,
     similarity_loss_function,
     counter_factual_optimization_routine,
+    combined_loss_function,
 )
 import matplotlib.pyplot as plt
 from property_procedures.utils import (
@@ -34,16 +35,17 @@ from property_procedures.utils import (
 )
 
 DESIRED_VALIDITY = 0.999
-DELTA = 0.5
+DELTA = 0.2
 OPTIMIZER_LR = 0.001
 PROB_WEIGHT = 1
 LAMBDA_1 = 1
 LAMBDA_2 = 1
 MAX_STEPS = 5000
-PATIENCE = 500
+PATIENCE = MAX_STEPS
 DESIRED_CLASS = 1
 ENSEMBLE_MEMBER_COUNT = 20
 N_POINTS = 50
+N_EPOCHS = 50
 base_ensemble = [
     MLP_Classifier(
         input_shape=2,
@@ -63,7 +65,7 @@ DATASET_LOADERS = [
         load_bubbles,
         {"n_samples": 1000},
         torch.tensor(
-            np.array([3.9, 3.9]).reshape(-1, 2), dtype=torch.float, requires_grad=True
+            np.array([3, 3]).reshape(-1, 2), dtype=torch.float, requires_grad=True
         ),
     ),
     (
@@ -144,7 +146,7 @@ PROPERTY_LOADERS = [
         "similarity",
         similarity_loss_function,
     ),
-    # ("combined", combined_loss_function),
+    ("combined", combined_loss_function),
 ]
 
 
@@ -158,7 +160,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
 
     # Train the ensemble model
     ensemble_model = Ensemble_Classifier(base_ensemble, n_models=ENSEMBLE_MEMBER_COUNT)
-    ensemble_model.load(f"../models/Ensemble_{dataset_name.capitalize()}/")
+    ensemble_model.load(f"../models/Ensemble_{dataset_name.capitalize()}_{N_EPOCHS}/")
 
     # Evaluate the ensemble model
     y_probs_ensemble, _ = ensemble_model.predict(points, raw_output=True)
@@ -236,6 +238,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
         y_labels,
         axes[i, -5:-1],
         dataset_name,
+        n_models=ENSEMBLE_MEMBER_COUNT,
         n_epochs=50,
         noisy=False,
     )

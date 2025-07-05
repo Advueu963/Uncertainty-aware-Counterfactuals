@@ -57,14 +57,18 @@ def sample_line(x1, x2, num_samples=10):
 
 def ensemble_probs(ensemble_model, points):
     probs, _ = ensemble_model.predict(points, raw_output=True)
-    return probs.clamp(
-        1e-8, 1 - 1e-8
-    )  # Ensure probabilities are in a valid range [1e-8, 1 - 1e-8]
+    probs = (probs + 1e-8) / (1 + 1e-8)  # Avoid log(0) issues and zero gradients
+    return probs
 
 
 def total_uncertainty_ensemble(y_probs_ensemble):
     y_probs_mean = y_probs_ensemble.mean(dim=1)
-    return y_probs_mean.mul(y_probs_mean.log2()).sum(dim=-1).mul(-1)
+    return (
+        y_probs_mean.mul(y_probs_mean.log2())
+        .sum(dim=-1)
+        .mul(-1)
+        .div(np.log2(y_probs_ensemble.shape[1]))
+    )
 
 
 def aleatoric_uncertainty_ensemble(y_probs_ensemble):
@@ -73,6 +77,7 @@ def aleatoric_uncertainty_ensemble(y_probs_ensemble):
         .sum(dim=-1)
         .mean(dim=1)
         .mul(-1)
+        .div(np.log2(y_probs_ensemble.shape[1]))
     )
 
 
@@ -95,13 +100,26 @@ def counter_factual_baseline(
     clue = Clue(dataset, model)
     dice = Dice(model)
     fa = Face(model, {"mode": "knn", "fraction": 0.2})
-    point_of_interest_df = pd.DataFrame(
-        {
-            "x0": point_of_interest[:, 0].detach().numpy(),
-            "x1": point_of_interest[:, 1].detach().numpy(),
-            "label": 1,
-        }
-    )
+    if noisy:
+        point_of_interest_df = pd.DataFrame(
+            {
+                "x0": point_of_interest[:, 0].detach().numpy(),
+                "x1": point_of_interest[:, 1].detach().numpy(),
+                **{
+                    f"noise_{i}": point_of_interest[:, i + 2].detach().numpy()
+                    for i in range(8)
+                },
+                "label": 1,
+            }
+        )
+    else:
+        point_of_interest_df = pd.DataFrame(
+            {
+                "x0": point_of_interest[:, 0].detach().numpy(),
+                "x1": point_of_interest[:, 1].detach().numpy(),
+                "label": 1,
+            }
+        )
     # generate counterfactual examples
     print("Factuals:")
     print(point_of_interest_df)
@@ -247,14 +265,23 @@ def invalidity(cf_point_of_interest, model, probability_function, desired_class=
 
 
 def visualize_other_cf_methods(
-    point_of_interest, points, y_labels, axes, dataset_name, n_epochs=50, noisy=False
+    point_of_interest,
+    points,
+    y_labels,
+    axes,
+    dataset_name,
+    n_models,
+    n_epochs=50,
+    noisy=False,
 ):
     (
         counterfactuals_clue,
         counterfactuals_dice,
         counterfactuals_face,
         counterfactuals_growing_sphere,
-    ) = counter_factual_baseline(dataset_name, point_of_interest, n_epochs, noisy)
+    ) = counter_factual_baseline(
+        dataset_name, point_of_interest, n_models, n_epochs, noisy
+    )
 
     for ax, cf, title in zip(
         axes.flatten(),
@@ -325,6 +352,9 @@ def visualze_property(
     dataset_name,
     delta=1,
     n_points=10,
+    DESIRED_CLASS=1,
+    noisy=False,
+    multi_class=False,
 ):
     match property_name:
         case "validity":
@@ -343,6 +373,9 @@ def visualze_property(
                 property_name,
                 delta=delta,
                 n_points=n_points,
+                DESIRED_CLASS=DESIRED_CLASS,
+                noisy=noisy,
+                multi_class=multi_class,
             )
         case "connected_ball":
             visualze_path_with_underlying(
@@ -360,6 +393,9 @@ def visualze_property(
                 property_name,
                 delta=delta,
                 n_points=n_points,
+                DESIRED_CLASS=DESIRED_CLASS,
+                noisy=noisy,
+                multi_class=multi_class,
             )
         case "robust":
             visualze_path_with_underlying(
@@ -377,6 +413,9 @@ def visualze_property(
                 property_name,
                 delta=delta,
                 n_points=n_points,
+                DESIRED_CLASS=DESIRED_CLASS,
+                noisy=noisy,
+                multi_class=multi_class,
             )
         case "feasability":
             visualze_path_with_underlying(
@@ -394,6 +433,9 @@ def visualze_property(
                 property_name,
                 delta=delta,
                 n_points=n_points,
+                DESIRED_CLASS=DESIRED_CLASS,
+                noisy=noisy,
+                multi_class=multi_class,
             )
         case "discriminative":
             visualze_path_with_underlying(
@@ -411,6 +453,9 @@ def visualze_property(
                 property_name,
                 delta=delta,
                 n_points=n_points,
+                DESIRED_CLASS=DESIRED_CLASS,
+                noisy=noisy,
+                multi_class=multi_class,
             )
         case "plausable":
             visualze_path_with_underlying(
@@ -428,6 +473,9 @@ def visualze_property(
                 property_name,
                 delta=delta,
                 n_points=n_points,
+                DESIRED_CLASS=DESIRED_CLASS,
+                noisy=noisy,
+                multi_class=multi_class,
             )
         case "similarity":
             visualze_path_with_underlying(
@@ -445,6 +493,9 @@ def visualze_property(
                 property_name,
                 delta=delta,
                 n_points=n_points,
+                DESIRED_CLASS=DESIRED_CLASS,
+                noisy=noisy,
+                multi_class=multi_class,
             )
         case "combined":
             visualze_path_with_underlying(
@@ -462,18 +513,26 @@ def visualze_property(
                 property_name,
                 delta=delta,
                 n_points=n_points,
+                DESIRED_CLASS=DESIRED_CLASS,
+                noisy=noisy,
+                multi_class=multi_class,
             )
 
 
-def visualize_au_eu_tu(fig, ensemble_model, points, y_labels, axes):
+def visualize_au_eu_tu(
+    fig, ensemble_model, points, y_labels, axes, noisy=False, multi_class=False
+):
     # Visualze AU, EU, TU
     grid_points = np.linspace(points.min() - 5, points.max() + 5, 100)
     xx, yy = np.meshgrid(grid_points, grid_points)
     grid_points = np.array([xx.flatten(), yy.flatten()]).T
     # Get the labels of the grid_points
-    y_probs_ensemble = ensemble_probs(
-        ensemble_model, torch.tensor(grid_points, dtype=torch.float32)
-    )
+    tensor_points = torch.tensor(grid_points, dtype=torch.float32)
+    if noisy:
+        tensor_points = torch.hstack(
+            [tensor_points, torch.zeros((tensor_points.shape[0], 8))]
+        )
+    y_probs_ensemble = ensemble_probs(ensemble_model, tensor_points)
     total_uncertainty = total_uncertainty_ensemble(y_probs_ensemble)
     aleatoric_uncertainty = aleatoric_uncertainty_ensemble(y_probs_ensemble)
     epistemic_uncertainty = epistemic_uncertainty_ensemble(y_probs_ensemble)
@@ -494,24 +553,7 @@ def visualize_au_eu_tu(fig, ensemble_model, points, y_labels, axes):
         ["TU", "AU", "EU"],
     ):
         # Scatter data
-        ax.scatter(
-            points[y_labels == 0, 0],
-            points[y_labels == 0, 1],
-            marker="s",
-            s=2,
-            alpha=0.5,
-            color="blue",
-            label="Class 0",
-        )
-        ax.scatter(
-            points[y_labels == 1, 0],
-            points[y_labels == 1, 1],
-            marker=".",
-            s=2,
-            alpha=0.5,
-            color="red",
-            label="Class 1",
-        )
+        visualize_data_points(ax, points, y_labels, multi_class=multi_class)
 
         # Unified contourf
         contour = ax.contourf(
@@ -534,7 +576,14 @@ def visualize_au_eu_tu(fig, ensemble_model, points, y_labels, axes):
 
 
 def visualize_decision_boundry(
-    ax, points, model, y_labels, dataset_name, probability_function=ensemble_probs
+    ax,
+    points,
+    model,
+    y_labels,
+    dataset_name,
+    probability_function=ensemble_probs,
+    noisy=False,
+    multi_class=False,
 ):
     # Visualize decision boundary
     xx, yy = np.meshgrid(
@@ -542,9 +591,12 @@ def visualize_decision_boundry(
         np.linspace(points[:, 1].min() - 2, points[:, 1].max() + 2, 100),
     )
     grid_points = np.c_[xx.ravel(), yy.ravel()]
-    grid_probs_ensemble = probability_function(
-        model, torch.tensor(grid_points, dtype=torch.float32)
-    )
+    tensor_points = torch.tensor(grid_points, dtype=torch.float32)
+    if noisy:
+        tensor_points = torch.hstack(
+            [tensor_points, torch.zeros((tensor_points.shape[0], 8))]
+        )
+    grid_probs_ensemble = probability_function(model, tensor_points)
     grid_probs = grid_probs_ensemble.mean(dim=1)
     grid_labels = grid_probs.argmax(dim=1).numpy()
     grid_labels = grid_labels.reshape(xx.shape)
@@ -552,24 +604,7 @@ def visualize_decision_boundry(
     ax.set_title(f"Decision Boundary - {dataset_name}")
     ax.set_xlabel("X1")
     ax.set_ylabel("X2")
-    ax.scatter(
-        points[y_labels == 0, 0],
-        points[y_labels == 0, 1],
-        marker="s",
-        s=2,
-        alpha=0.5,
-        color="blue",
-        label="Class 0",
-    )
-    ax.scatter(
-        points[y_labels == 1, 0],
-        points[y_labels == 1, 1],
-        marker="o",
-        s=2,
-        alpha=0.5,
-        color="red",
-        label="Class 1",
-    )
+    visualize_data_points(ax, points, y_labels, multi_class=multi_class)
     ax.legend()
     ax.set_xlim(points[:, 0].min() - 1, points[:, 0].max() + 1)
     ax.set_ylim(points[:, 1].min() - 1, points[:, 1].max() + 1)
@@ -592,6 +627,8 @@ def visualze_path_with_underlying(
     delta=1,
     n_points=10,
     DESIRED_CLASS=1,
+    noisy=False,
+    multi_class=False,
 ):
     # Create gird of points
     grid_points = np.linspace(points.min() - 2, points.max() + 2, 100)
@@ -600,12 +637,18 @@ def visualze_path_with_underlying(
 
     # Extract loss value
     tensor_points = torch.tensor(grid_points, dtype=torch.float32)
+    if noisy:
+        tensor_points = torch.hstack(
+            [tensor_points, torch.zeros((tensor_points.shape[0], 8))]
+        )
     probs_ensemble = ensemble_probs(model, tensor_points)
     probs = probs_ensemble.mean(dim=1)
 
     # sample_ball
     delta_ball = sample_delta_ball(tensor_points.detach().numpy(), delta, n_points)
-    probs_ensemble_delta_ball = ensemble_probs(model, delta_ball.view(-1, 2))
+    probs_ensemble_delta_ball = ensemble_probs(
+        model, delta_ball.view(-1, *tensor_points.shape[1:])
+    )
     eu_delta_ball = epistemic_uncertainty_ensemble(probs_ensemble_delta_ball).view(
         n_points, -1
     )
@@ -635,24 +678,25 @@ def visualze_path_with_underlying(
     cmap = mpl.cm.viridis
 
     # visualize the data itself
-    ax.scatter(
-        points[y_labels == 0, 0],
-        points[y_labels == 0, 1],
-        marker="s",
-        s=2,
-        alpha=0.3,
-        color="blue",
-        label="Class 0",
+    visualize_data_points(ax, points, y_labels, multi_class=multi_class)
+    visualize_cf_path(ax, counter_factual, counter_factual_steps, point_of_interest)
+    ax.set_xlabel("X1")
+    ax.set_ylabel("X2")
+    ax.set_title(f"{dataset_name} - {property_name}")
+
+    # Unified contourf
+    ax.contourf(
+        xx,
+        yy,
+        combination.numpy().reshape(xx.shape),
+        levels=levels,
+        cmap=cmap,
+        norm=norm,
+        alpha=0.1,
     )
-    ax.scatter(
-        points[y_labels == 1, 0],
-        points[y_labels == 1, 1],
-        marker="o",
-        s=2,
-        alpha=0.3,
-        color="red",
-        label="Class 1",
-    )
+
+
+def visualize_cf_path(ax, counter_factual, counter_factual_steps, point_of_interest):
     ax.scatter(
         point_of_interest[:, 0].detach(),
         point_of_interest[:, 1].detach(),
@@ -679,24 +723,60 @@ def visualze_path_with_underlying(
         color="lime",
         label="CF Steps",
     )
-    ax.set_xlabel("X1")
-    ax.set_ylabel("X2")
-    ax.set_title(f"{dataset_name} - {property_name}")
 
-    # Unified contourf
-    ax.contourf(
-        xx,
-        yy,
-        combination.numpy().reshape(xx.shape),
-        levels=levels,
-        cmap=cmap,
-        norm=norm,
-        alpha=0.1,
+
+def visualize_data_points(ax, points, y_labels, multi_class=False):
+    ax.scatter(
+        points[y_labels == 0, 0],
+        points[y_labels == 0, 1],
+        marker="s",
+        s=2,
+        alpha=0.3,
+        color="blue",
+        label="Class 0",
     )
+    ax.scatter(
+        points[y_labels == 1, 0],
+        points[y_labels == 1, 1],
+        marker="o",
+        s=2,
+        alpha=0.3,
+        color="red",
+        label="Class 1",
+    )
+    if multi_class:
+        ax.scatter(
+            points[y_labels == 2, 0],
+            points[y_labels == 2, 1],
+            marker="s",
+            s=2,
+            alpha=0.3,
+            color="green",
+            label="Class 2",
+        )
+        ax.scatter(
+            points[y_labels == 3, 0],
+            points[y_labels == 3, 1],
+            marker="s",
+            s=2,
+            alpha=0.3,
+            color="orange",
+            label="Class 3",
+        )
 
 
 # visualize how std of eu looks like aroung the points
-def visualize_eu_std_points(fig, model, points, y_labels, axes, delta=1, n_points=10):
+def visualize_eu_std_points(
+    fig,
+    model,
+    points,
+    y_labels,
+    axes,
+    delta=1,
+    n_points=10,
+    noisy=False,
+    multi_class=False,
+):
     """
     Visualize a given point and its AU, EU, and TU.
     """
@@ -708,9 +788,16 @@ def visualize_eu_std_points(fig, model, points, y_labels, axes, delta=1, n_point
     # Extract loss value
     tensor_points = torch.tensor(grid_points, dtype=torch.float32)
 
+    if noisy:
+        tensor_points = torch.hstack(
+            [tensor_points, torch.zeros((tensor_points.shape[0], 8))]
+        )
+
     # sample_ball
     delta_ball = sample_delta_ball(tensor_points.detach().numpy(), delta, n_points)
-    probs_ensemble_delta_ball = ensemble_probs(model, delta_ball.view(-1, 2))
+    probs_ensemble_delta_ball = ensemble_probs(
+        model, delta_ball.view(-1, *tensor_points.shape[1:])
+    )
     eu_delta_ball = epistemic_uncertainty_ensemble(probs_ensemble_delta_ball).view(
         n_points, -1
     )
@@ -736,24 +823,7 @@ def visualize_eu_std_points(fig, model, points, y_labels, axes, delta=1, n_point
         axes.flatten(), [au_delta_ball, max_eu_ball], ["Hyper_MAX_AU", "Hyper_MAX_EU"]
     ):
         # Scatter data
-        ax.scatter(
-            points[y_labels == 0, 0],
-            points[y_labels == 0, 1],
-            marker="s",
-            s=10,
-            alpha=0.5,
-            color="blue",
-            label="Class 0",
-        )
-        ax.scatter(
-            points[y_labels == 1, 0],
-            points[y_labels == 1, 1],
-            marker="x",
-            s=10,
-            alpha=0.5,
-            color="red",
-            label="Class 1",
-        )
+        visualize_data_points(ax, points, y_labels, multi_class=multi_class)
 
         # Unified contourf
         contour = ax.contourf(

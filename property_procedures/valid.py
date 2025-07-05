@@ -21,12 +21,11 @@ def validity_loss_function(
     #     loss = -p_weight * (
     #         lambda_2 * aleatoric_uncertainty_function(probs_ensemble)
     #         + lambda_1 * epistemic_uncertainty_function(probs_ensemble)
-    #     )
+    #     ).log2()
     # else:
-    #     loss = -(p_weight * target_probs)
+    #     loss = -(p_weight * target_probs.log2())
 
-    loss = p_weight * target_probs
-    loss = loss.mul(-1)
+    loss = -p_weight * target_probs.log2()
 
     loss.backward()
 

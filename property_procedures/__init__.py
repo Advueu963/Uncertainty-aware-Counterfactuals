@@ -4,7 +4,7 @@ from .connected import (
 from .valid import validity_loss_function
 from .robust import robust_loss_function
 from .feasable import feasable_loss_function
-from .discriminative import discriminative_loss_function
+from .discriminative import discriminative_loss_function, discriminative_loss_function_2
 from .stability import stability_loss_function
 from .plausable import plausable_loss_function
 from .similarity import similarity_loss_function
@@ -17,8 +17,8 @@ __all__ = [
     "validity_loss_function",
     "robust_loss_function",
     "feasable_loss_function",
-    "discriminiative_procedure",
     "discriminative_loss_function",
+    "discriminative_loss_function_2",
     "stability_loss_function",
     "plausable_loss_function",
     "similarity_loss_function",

@@ -11,7 +11,7 @@ from data import (
 )
 
 ENSEMBLE_MEMBER_COUNT = 20
-N_EPOCHS = 100
+N_EPOCHS = 50
 BATCH_SIZE = 128
 base_ensemble = [
     MLP_Classifier(
@@ -21,8 +21,9 @@ base_ensemble = [
         num_neurons=64,
         dropout_prob=0,
         batch_norm=False,
+        random_state=i,
     )
-    for _ in range(ENSEMBLE_MEMBER_COUNT)
+    for i in range(ENSEMBLE_MEMBER_COUNT)
 ]
 ensemble_model = Ensemble_Classifier(base_ensemble, n_models=ENSEMBLE_MEMBER_COUNT)
 
@@ -62,4 +63,4 @@ for dataset_name, loader, kwargs in DATASET_LOADERS:
     )
     print("-" * 40)
     # Save the model if needed
-    ensemble_model.save(f"models/Ensemble_{dataset_name.capitalize()}_{N_EPOCHS}/")
+    ensemble_model.save(f"../models/Ensemble_{dataset_name.capitalize()}_{N_EPOCHS}/")

@@ -30,9 +30,9 @@ def connected_loss_function(
     target_probs = probs[0, desired_class]
     _ = probs_delta_ball[:, desired_class]
 
-    loss = p_weight * target_probs
+    loss = p_weight * target_probs.log2()
     if target_probs > 0.51:
-        loss = loss - lambda_1 * (eu_delta_ball.mean())
+        loss = loss - lambda_1 * (eu_delta_ball.mean().log2())
 
     loss = loss.mul(-1)
 

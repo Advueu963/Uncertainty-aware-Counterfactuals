@@ -5,6 +5,11 @@ from epiuc.uncertainty.wrapper import Ensemble_Classifier
 from data import (
     load_l_dataset,
     load_one_moon,
+    load_ring_dataset,
+    load_bubbles,
+    load_bubbles_noisy,
+    load_two_moon,
+    load_infinity_dataset,
 )
 from property_procedures import (
     validity_loss_function,
@@ -12,7 +17,9 @@ from property_procedures import (
     feasable_loss_function,
     similarity_loss_function,
     counter_factual_optimization_routine,
-    combined_loss_function,
+    connected_loss_function,
+    discriminative_loss_function,
+    plausable_loss_function,
 )
 import matplotlib.pyplot as plt
 from property_procedures.utils import (
@@ -27,16 +34,17 @@ from property_procedures.utils import (
 )
 
 DESIRED_VALIDITY = 0.999
-DELTA = 0.5
-OPTIMIZER_LR = 0.1
+DELTA = 0.2
+OPTIMIZER_LR = 0.01
 PROB_WEIGHT = 1
 LAMBDA_1 = 1
 LAMBDA_2 = 1
-MAX_STEPS = 1000
-PATIENCE = 50
+MAX_STEPS = 5000
+PATIENCE = MAX_STEPS
 DESIRED_CLASS = 1
 ENSEMBLE_MEMBER_COUNT = 20
 N_POINTS = 50
+N_EPOCHS = 100
 base_ensemble = [
     MLP_Classifier(
         input_shape=2,
@@ -51,14 +59,14 @@ base_ensemble = [
 
 
 DATASET_LOADERS = [
-    # (
-    #     "bubbles",
-    #     load_bubbles,
-    #     {"n_samples": 1000},
-    #     torch.tensor(
-    #         np.array([3.9, 3.9]).reshape(-1, 2), dtype=torch.float, requires_grad=True
-    #     ),
-    # ),
+    (
+        "bubbles",
+        load_bubbles,
+        {"n_samples": 1000},
+        torch.tensor(
+            np.array([3, 3]).reshape(-1, 2), dtype=torch.float, requires_grad=True
+        ),
+    ),
     (
         "l_dataset",
         load_l_dataset,
@@ -75,48 +83,48 @@ DATASET_LOADERS = [
             np.array([-1, 0]).reshape(-1, 2), dtype=torch.float, requires_grad=True
         ),
     ),
-    # (
-    #     "ring_dataset",
-    #     load_ring_dataset,
-    #     {"n_samples": 1000, "inner_radius": 1.0, "outer_radius": 2.0, "noise": 0.1},
-    #     torch.tensor(
-    #         np.array([-1, -2]).reshape(-1, 2), dtype=torch.float, requires_grad=True
-    #     ),
-    # ),
-    # (
-    #     "bubbles_noisy",
-    #     load_bubbles_noisy,
-    #     {"n_samples": 1000},
-    #     torch.tensor(
-    #         np.array([2.5, 2.5]).reshape(-1, 2), dtype=torch.float, requires_grad=True
-    #     ),
-    # ),
-    # (
-    #     "two_moon",
-    #     load_two_moon,
-    #     {"n_samples": 1000},
-    #     torch.tensor(
-    #         np.array([0, 1]).reshape(-1, 2), dtype=torch.float, requires_grad=True
-    #     ),
-    # ),
-    # (
-    #     "infinity_dataset",
-    #     load_infinity_dataset,
-    #     {"n_samples": 1000},
-    #     torch.tensor(
-    #         np.array([2, 0]).reshape(-1, 2), dtype=torch.float, requires_grad=True
-    #     ),
-    # ),
+    (
+        "ring_dataset",
+        load_ring_dataset,
+        {"n_samples": 1000, "inner_radius": 1.0, "outer_radius": 2.0, "noise": 0.1},
+        torch.tensor(
+            np.array([-1, -2]).reshape(-1, 2), dtype=torch.float, requires_grad=True
+        ),
+    ),
+    (
+        "bubbles_noisy",
+        load_bubbles_noisy,
+        {"n_samples": 1000},
+        torch.tensor(
+            np.array([2.5, 2.5]).reshape(-1, 2), dtype=torch.float, requires_grad=True
+        ),
+    ),
+    (
+        "two_moon",
+        load_two_moon,
+        {"n_samples": 1000},
+        torch.tensor(
+            np.array([0, 1]).reshape(-1, 2), dtype=torch.float, requires_grad=True
+        ),
+    ),
+    (
+        "infinity_dataset",
+        load_infinity_dataset,
+        {"n_samples": 1000},
+        torch.tensor(
+            np.array([2, 0]).reshape(-1, 2), dtype=torch.float, requires_grad=True
+        ),
+    ),
 ]
 PROPERTY_LOADERS = [
     (
         "validity",
         validity_loss_function,
     ),
-    # (
-    #     "connected_ball",
-    #     connected_loss_function,
-    # ),
+    (
+        "connected_ball",
+        connected_loss_function,
+    ),
     (
         "robust",
         robust_loss_function,
@@ -125,19 +133,19 @@ PROPERTY_LOADERS = [
         "feasability",
         feasable_loss_function,
     ),
-    # (
-    #     "discriminative",
-    #     discriminative_loss_function,
-    # ),
-    # (
-    #     "plausable",
-    #     plausable_loss_function,
-    # ),
+    (
+        "discriminative",
+        discriminative_loss_function,
+    ),
+    (
+        "plausable",
+        plausable_loss_function,
+    ),
     (
         "similarity",
         similarity_loss_function,
     ),
-    ("combined", combined_loss_function),
+    # ("combined", combined_loss_function),
 ]
 
 fig, axes = plt.subplots(
@@ -206,7 +214,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
             n_points=N_POINTS,
         )
     print(f"Visualizing AU, EU, TU for dataset: {dataset_name}")
-    visualize_au_eu_tu(points, y_labels, axes[i, -10:-7])
+    visualize_au_eu_tu(fig, ensemble_model, points, y_labels, axes[i, -10:-7])
 
     # Visualize the MAX EU and AU globally
     visualize_eu_std_points(
@@ -221,6 +229,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
         y_labels,
         axes[i, -5:-1],
         dataset_name,
+        n_models=ENSEMBLE_MEMBER_COUNT,
         n_epochs=100,
         noisy=False,
     )

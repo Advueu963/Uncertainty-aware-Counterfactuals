@@ -17,7 +17,7 @@ def uncertainty_decomposition_entropy(
         The shape should be (n_samples, n_models, n_classes)
     :return: total uncertainty, aleatoric uncertainty, epistemic uncertainty
     """
-    min_real_value = 1e-30
+    min_real_value = 1e-8
     # replace 0 with a small value to avoid log(0)
     probabilities = torch.where(
         probabilities == 0,
