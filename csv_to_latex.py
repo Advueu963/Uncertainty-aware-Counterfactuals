@@ -3,7 +3,7 @@ import re
 import pandas as pd
 
 # Load CSV
-df = pd.read_csv("stability_data.csv", index_col=0)
+df = pd.read_csv("coherence.csv", index_col=0)
 
 
 # Helper function to format LaTeX entry

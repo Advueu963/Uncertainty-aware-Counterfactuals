@@ -14,14 +14,15 @@ from data import (
     load_infinity_dataset,
 )
 from property_procedures import (
-    similarity_loss_function,
     validity_loss_function,
     connected_loss_function,
     robust_loss_function,
     feasable_loss_function,
     discriminative_loss_function,
     plausable_loss_function,
+    similarity_loss_function,
     counter_factual_optimization_routine,
+    combined_loss_function,
 )
 import matplotlib.pyplot as plt
 from property_procedures.utils import (
@@ -33,16 +34,17 @@ from property_procedures.utils import (
 from synthetic_to_carla import Synthetic_CARLA, MyOwnModel
 
 DESIRED_VALIDITY = 0.999
-DELTA = 0.1
-OPTIMIZER_LR = 0.2
+DELTA = 0.2
+OPTIMIZER_LR = 0.01
 PROB_WEIGHT = 1
 LAMBDA_1 = 1
 LAMBDA_2 = 1
 MAX_STEPS = 5000
-PATIENCE = 50
+PATIENCE = MAX_STEPS
 DESIRED_CLASS = 1
 ENSEMBLE_MEMBER_COUNT = 20
-N_POINTS = 500
+N_POINTS = 50
+N_EPOCHS = 50
 base_ensemble = [
     MLP_Classifier(
         input_shape=2,
@@ -62,7 +64,7 @@ DATASET_LOADERS = [
         load_bubbles,
         {"n_samples": 1000},
         torch.tensor(
-            np.array([3.9, 3.9]).reshape(-1, 2), dtype=torch.float, requires_grad=True
+            np.array([3, 3]).reshape(-1, 2), dtype=torch.float, requires_grad=True
         ),
     ),
     (
@@ -118,74 +120,32 @@ PROPERTY_LOADERS = [
     (
         "validity",
         validity_loss_function,
-        {"MAX_STEPS": MAX_STEPS, "DESIRED_VALIDITY": DESIRED_VALIDITY},
     ),
     (
         "connected_ball",
         connected_loss_function,
-        {
-            "MAX_STEPS": MAX_STEPS,
-            "aleatoric_uncertainty_function": aleatoric_uncertainty_ensemble,
-            "epistemic_uncertainty_function": epistemic_uncertainty_ensemble,
-            "delta": DELTA,
-            "n_points": 10,
-            "DESIRED_VALIDITY": DESIRED_VALIDITY,
-        },
     ),
     (
         "robust",
         robust_loss_function,
-        {
-            "MAX_STEPS": MAX_STEPS,
-            "aleatoric_uncertainty_function": aleatoric_uncertainty_ensemble,
-            "epistemic_uncertainty_function": epistemic_uncertainty_ensemble,
-            "delta": DELTA,
-            "n_points": 10,
-            "DESIRED_VALIDITY": DESIRED_VALIDITY,
-        },
     ),
     (
         "feasability",
         feasable_loss_function,
-        {
-            "MAX_STEPS": MAX_STEPS,
-            "epistemic_uncertainty_function": epistemic_uncertainty_ensemble,
-            "delta": DELTA,
-            "n_points": 10,
-            "DESIRED_VALIDITY": DESIRED_VALIDITY,
-        },
     ),
     (
         "discriminative",
         discriminative_loss_function,
-        {
-            "MAX_STEPS": MAX_STEPS,
-            "aleatoric_uncertainty_function": aleatoric_uncertainty_ensemble,
-            "DESIRED_VALIDITY": DESIRED_VALIDITY,
-        },
     ),
     (
         "plausable",
         plausable_loss_function,
-        {
-            "MAX_STEPS": MAX_STEPS,
-            "epistemic_uncertainty_function": epistemic_uncertainty_ensemble,
-            "DESIRED_VALIDITY": DESIRED_VALIDITY,
-        },
     ),
     (
         "similarity",
         similarity_loss_function,
-        {
-            "MAX_STEPS": MAX_STEPS,
-            "aleatoric_uncertainty_function": aleatoric_uncertainty_ensemble,
-            "n_points": 10,
-            "DESIRED_VALIDITY": DESIRED_VALIDITY,
-            "delta": DELTA,
-        },
     ),
-    # ("stable", stability_loss_function, {"MAX_STEPS": MAX_STEPS, "aleatoric_uncertainty_function": aleatoric_uncertainty_ensemble, "n_points": 10,
-    #   "DESIRED_VALIDITY": DESIRED_VALIDITY, "delta": DELTA})
+    ("combined", combined_loss_function),
 ]
 
 
@@ -382,7 +342,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
 
     # Train the ensemble model
     ensemble_model = Ensemble_Classifier(base_ensemble, n_models=ENSEMBLE_MEMBER_COUNT)
-    ensemble_model.load(f"models/Ensemble_{dataset_name.capitalize()}/")
+    ensemble_model.load(f"models/Ensemble_{dataset_name.capitalize()}_{N_EPOCHS}/")
 
     # Evaluate the ensemble model
     y_probs_ensemble, _ = ensemble_model.predict(points, raw_output=True)
@@ -400,9 +360,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
 
     l2_distance_stable.append([])
     l2_distance_stable_std.append([])
-    for j, (property_name, property_function, property_kwargs) in enumerate(
-        PROPERTY_LOADERS
-    ):
+    for j, (property_name, property_function) in enumerate(PROPERTY_LOADERS):
         print(f"Evaluating property: {property_name} on dataset: {dataset_name}")
 
         # Run the property procedure
@@ -428,6 +386,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
                 lambda_1=LAMBDA_1,
                 lambda_2=LAMBDA_2,
                 patience=PATIENCE,
+                optimization_method="sgd",
             )
             cf_poi.append(counter_factual)
 
@@ -486,7 +445,7 @@ l2_stability_data = pd.DataFrame(
         ]
     ),
     index=[f"{dataset_name}" for dataset_name, _, _, _ in DATASET_LOADERS],
-    columns=[property_name for property_name, _, _ in PROPERTY_LOADERS]
+    columns=[property_name for property_name, _ in PROPERTY_LOADERS]
     + ["GS", "CLUE", "DICE", "FACE"],
 )
 print(l2_stability_data)

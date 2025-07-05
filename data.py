@@ -59,40 +59,40 @@ def load_two_moon(n_samples=1000):
     moon2 = generate_moon(n_samples, flip=True)
     points = torch.concatenate([moon1, moon2], dim=0)
 
-    # Parameters for moons
-    r = 1.0
-    center0 = torch.tensor(np.array([0, 0], dtype=float))  # First moon
-    center1 = torch.tensor(
-        np.array([1, 0.5], dtype=float)
-    )  # Second moon (flipped and shifted)
+    y_labels = torch.cat(
+        [
+            torch.zeros(n_samples, dtype=torch.long),  # Moon 1
+            torch.ones(n_samples, dtype=torch.long),  # Moon 2
+        ]
+    )
 
-    # Convert to polar coordinates relative to each moon
-    rel0 = points - center0
-    rel1 = points - center1
+    return points, y_labels, None
 
-    theta0 = torch.arctan2(rel0[:, 1], rel0[:, 0])
-    theta1 = torch.arctan2(-rel1[:, 1], rel1[:, 0])  # flipped second moon
 
-    r0 = torch.linalg.norm(rel0, dim=1)
-    r1 = torch.linalg.norm(rel1, dim=1)
+def load_four_moon(n_samples=1000):
+    """
+    Generate n_samples points in the simplex.
+    """
+    # Generate random points in the simplex
+    # Generate both moons
+    moon1 = generate_moon(n_samples)
+    moon2 = generate_moon(n_samples, flip=True)
+    moon3 = generate_moon(n_samples) - torch.tensor([2, 0])  # Shifted left
+    moon4 = generate_moon(n_samples, flip=True) - torch.tensor(
+        [2, 0]
+    )  # Shifted left and flipped
+    points = torch.concatenate([moon1, moon2, moon3, moon4], dim=0)
 
-    # Mask angles: first moon lives in [0, pi], second in [0, pi] after flip
-    arc0 = (theta0 >= 0) & (theta0 <= np.pi)
-    arc1 = (theta1 >= 0) & (theta1 <= np.pi)
+    y_labels = torch.cat(
+        [
+            torch.zeros(n_samples, dtype=torch.long),  # Moon 1
+            torch.ones(n_samples, dtype=torch.long),  # Moon 2
+            2 * torch.ones(n_samples, dtype=torch.long),  # Moon 3
+            3 * torch.ones(n_samples, dtype=torch.long),  # Moon 4
+        ]
+    )
 
-    # Score proximity to moon arcs (lower deviation → higher probability)
-    score0 = arc0 * (1 - torch.abs(r0 - r))  # closer to radius 1
-    score1 = arc1 * (1 - torch.abs(r1 - r))
-
-    # Decision value
-    z = score0 - score1
-
-    # Sigmoid probability
-    probs = 1 / (1 + torch.exp(-z))  # sharper boundary with higher factor
-    y_probs = torch.stack([probs, 1 - probs], dim=-1)
-    y_labels = torch.argmax(y_probs, dim=1)
-
-    return points, y_labels, y_probs
+    return points, y_labels, None
 
 
 def load_bubbles(n_samples=1000):
@@ -110,6 +110,29 @@ def load_bubbles(n_samples=1000):
     y_labels = torch.argmax(y_probs, dim=1)
 
     return points, y_labels, y_probs
+
+
+def load_bubbles_multiclass(n_samples=1000):
+    """
+    Generate n_samples points in the simplex.
+    """
+    torch.manual_seed(42)
+    np.random.seed(42)
+
+    point_bunch = generate_x_points(n_samples=n_samples, bias=np.array([-4, -4]))
+    labels_bunch = torch.ones(n_samples, dtype=torch.long)
+    point_bunch2 = generate_x_points(n_samples=n_samples, bias=np.array([4, 4]))
+    labels_bunch2 = torch.zeros(n_samples, dtype=torch.long)
+    point_bunch3 = generate_x_points(n_samples=n_samples, bias=np.array([-4, 4]))
+    labels_bunch3 = torch.ones(n_samples, dtype=torch.long) + 1
+    point_bunch4 = generate_x_points(n_samples=n_samples, bias=np.array([4, -4]))
+    labels_bunch4 = torch.ones(n_samples, dtype=torch.long) + 2
+    points = torch.vstack(
+        (point_bunch, point_bunch2, point_bunch3, point_bunch4)
+    ).float()
+    y_labels = torch.cat([labels_bunch, labels_bunch2, labels_bunch3, labels_bunch4])
+
+    return points, y_labels, None
 
 
 def load_bubbles_noisy(n_samples=1000):
@@ -190,6 +213,60 @@ def load_ring_dataset(n_samples=1000, inner_radius=1.0, outer_radius=2.0, noise=
     return X, y_labels, y_probs
 
 
+def load_ring_dataset_multiclass(n_samples=1000, noise=0.1):
+    """
+    Generate a synthetic dataset with class 0 in the center and class 1 in a surrounding ring.
+
+    Parameters:
+        n_samples (int): Total number of samples.
+        inner_radius (float): Radius threshold for class 0.
+        outer_radius (float): Outer boundary of the data.
+        noise (float): Standard deviation of Gaussian noise added to points.
+        plot (bool): Whether to plot the generated dataset.
+
+    Returns:
+        X (ndarray): Feature matrix of shape (n_samples, 2).
+        y (ndarray): Labels of shape (n_samples,).
+    """
+    torch.manual_seed(42)
+    np.random.seed(42)
+    inner_radius = 4.0
+
+    # Class 0: Points within the inner radius
+    r0 = inner_radius * np.sqrt(np.random.rand(n_samples))
+    theta0 = 2 * np.pi * np.random.rand(n_samples)
+    x0 = np.stack([r0 * np.cos(theta0), r0 * np.sin(theta0)], axis=1)
+    x0 += noise * np.random.randn(n_samples, 2)
+
+    # Combine
+    X = torch.from_numpy(np.vstack([x0]).astype(np.float32))
+
+    center = np.array([0.0, 0.0])
+    # Compute Euclidean distance from center
+    distances = np.linalg.norm(X - center, axis=1, ord=2)
+    # Normalize distance to [0, 1] within the transition region
+    normalized_r = (distances - 0) / (inner_radius)
+    # Create four segments of distances
+    segments = np.array(
+        [
+            0.0,  # Class 0
+            0.25,  # Class 1
+            0.5,  # Class 2
+            0.75,  # Class 3
+        ]
+    )
+    y_labels = torch.zeros(n_samples, dtype=torch.long)
+
+    y_class_1 = (normalized_r >= segments[0]) & (normalized_r < segments[1])
+    y_labels += y_class_1
+    y_class_2 = (normalized_r >= segments[1]) & (normalized_r < segments[2])
+    y_labels += 2 * y_class_2
+    y_class_3 = (normalized_r >= segments[2]) & (normalized_r < segments[3])
+    y_labels += 3 * y_class_3
+
+    return X.float(), y_labels, None
+
+
 def load_l_dataset(n_samples=500):
     torch.manual_seed(42)
     np.random.seed(42)
@@ -219,6 +296,89 @@ def load_l_dataset(n_samples=500):
     return X, y_labels, None
 
 
+def load_l_dataset_multiclass(n_samples=500):
+    torch.manual_seed(42)
+    np.random.seed(42)
+    # Class 0:
+    x0 = Normal(4, 4).sample((n_samples,))
+    x1 = Normal(0, 0.5).sample((n_samples,))
+    l_part_one = torch.stack([x0, x1], dim=-1)
+    y_labels_part_one = (
+        l_part_one[:, 0] >= 1.5
+    ).long()  # Class 0 if x0 > 0, else Class 1
+    # y_labels_part_one = torch.zeros(n_samples, dtype=torch.long)
+
+    # Class 1:
+    x0 = Normal(0, 0.5).sample((n_samples,))
+    x1 = Normal(4, 4).sample((n_samples,))
+    l_part_two = torch.stack([x0, x1], dim=-1)
+    y_labels_part_two = (l_part_two[:, 1] < 0).long()  # Class 1 if x0 > 0, else Class 0
+    # y_labels_part_two = torch.ones(n_samples, dtype=torch.long)
+
+    # Class 2:
+    x0 = Normal(-4, 4).sample((n_samples,))
+    x1 = Normal(0, 0.5).sample((n_samples,))
+    l_part_three = torch.stack([x0, x1], dim=-1)
+    y_labels_part_three = (
+        2 * (l_part_three[:, 0] < 0).long()
+    )  # Class 0 if x0 > 0, else Class 1
+
+    # Class 3:
+    x0 = Normal(0, 0.5).sample((n_samples,))
+    x1 = Normal(-4, 4).sample((n_samples,))
+    l_part_four = torch.stack([x0, x1], dim=-1)
+    y_labels_part_four = (
+        3 * (l_part_four[:, 1] < 0).long()
+    )  # Class 0 if x0 > 0, else Class 1
+
+    # Class 1 point bunch
+    point_bunch = generate_x_points(n_samples=n_samples // 5, bias=np.array([10, 10]))
+    y_labels_bunch = torch.ones(n_samples // 5, dtype=torch.long)
+
+    # Class 0 point bunch
+    point_bunch_2 = generate_x_points(
+        n_samples=n_samples // 5, bias=np.array([-10, 10])
+    )
+    y_labels_bunch_2 = torch.zeros(n_samples // 5, dtype=torch.long)
+
+    point_bunch_4 = generate_x_points(
+        n_samples=n_samples // 5, bias=np.array([-10, -10])
+    )
+    y_labels_bunch_4 = 2 * torch.ones(n_samples // 5, dtype=torch.long)
+
+    point_bunch_3 = generate_x_points(
+        n_samples=n_samples // 5, bias=np.array([10, -10])
+    )
+    y_labels_bunch_3 = 3 * torch.ones(n_samples // 5, dtype=torch.long)
+
+    X = torch.vstack(
+        [
+            l_part_one,
+            l_part_two,
+            l_part_three,
+            l_part_four,
+            point_bunch,
+            point_bunch_2,
+            point_bunch_3,
+            point_bunch_4,
+        ]
+    )
+    y_labels = torch.cat(
+        [
+            y_labels_part_one,
+            y_labels_part_two,
+            y_labels_part_three,
+            y_labels_part_four,
+            y_labels_bunch,
+            y_labels_bunch_2,
+            y_labels_bunch_3,
+            y_labels_bunch_4,
+        ]
+    )
+
+    return X.float(), y_labels, None
+
+
 def load_infinity_dataset(n_samples=1000):
     n0 = n_samples // 2
     n1 = n_samples - n0
@@ -240,7 +400,7 @@ def load_infinity_dataset(n_samples=1000):
     return X, y_labels, y_probs
 
 
-def load_noisy_datasets(dataset_name, **kwargs):
+def load_datasets(dataset_name, noisy=False, **kwargs):
     if dataset_name == "one_moon":
         X, y_labels, y_probs = load_one_moon(**kwargs)
     elif dataset_name == "two_moon":
@@ -260,8 +420,10 @@ def load_noisy_datasets(dataset_name, **kwargs):
     else:
         raise ValueError(f"Unknown dataset name: {dataset_name}")
 
-    # Now extend 8 features that are just noise
-    torch.manual_seed(42)
-    noise_features = torch.distributions.Normal(0, 1).sample((X.shape[0], 8))
-    X_extended = torch.cat((X, noise_features), dim=1)
-    return X_extended, y_labels, y_probs
+    if noisy:
+        # Now extend 8 features that are just noise
+        torch.manual_seed(42)
+        noise_features = torch.distributions.Normal(0, 1).sample((X.shape[0], 8))
+        X_extended = torch.cat((X, noise_features), dim=1)
+        return X_extended, y_labels, y_probs
+    return X, y_labels, y_probs

@@ -1,5 +1,5 @@
 import torch
-from torch.optim import Adam
+from torch.optim import Adam, SGD
 
 
 def counter_factual_optimization_routine(
@@ -19,10 +19,17 @@ def counter_factual_optimization_routine(
     patience=10,
     delta=0.1,
     n_points=10,
+    optimization_method="adam",
 ):
     counter_factual = point_to_explain.detach().clone().requires_grad_(True)
     counter_factual_steps = counter_factual.detach().clone()
-    optimizer = Adam([counter_factual], lr=lr)
+    # Initialize the optimizer
+    if optimization_method == "adam":
+        optimizer = Adam([counter_factual], lr=lr)
+    elif optimization_method == "sgd":
+        optimizer = SGD([counter_factual], lr=lr)
+    else:
+        raise ValueError("Unsupported optimization method. Use 'adam' or 'sgd'.")
 
     probs_ensemble = probability_function(model, counter_factual)
     probs = probs_ensemble.mean(dim=1)
@@ -58,6 +65,12 @@ def counter_factual_optimization_routine(
         )
 
         counter_factual.grad = grad
+
+        # most_salient = grad.abs().argmax().item()
+        # update_grad = torch.zeros_like(grad)
+        # update_grad[0,most_salient] = (-1)**(grad[0,most_salient] < 0)
+        # counter_factual.grad = update_grad
+
         optimizer.step()
         # print(counter_factual,au, t)
 
@@ -67,11 +80,7 @@ def counter_factual_optimization_routine(
         target_probs = probs[0, desired_class]
 
         # Check for early stopping
-        if target_probs > 0.5:
-            start_cf_construction = True
-        if abs(prior_loss - loss.item()) < 0.01 and start_cf_construction:
-            patience_counter += 1
-        elif abs(prior_loss - loss.item()) < 0.001:
+        if abs(prior_loss - loss.item()) < 0.01:
             patience_counter += 1
         else:
             patience_counter = 0
