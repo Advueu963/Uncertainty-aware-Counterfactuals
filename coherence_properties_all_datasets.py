@@ -218,6 +218,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
     # Train the ensemble model
     ensemble_model = Ensemble_Classifier(base_ensemble, n_models=ENSEMBLE_MEMBER_COUNT)
     ensemble_model.load(f"models/Ensemble_{dataset_name.capitalize()}_{N_EPOCHS}/")
+    ensemble_model.compile()
 
     # Evaluate the ensemble model
     y_probs_ensemble, _ = ensemble_model.predict(points, raw_output=True)
@@ -294,7 +295,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
             lambda_1=LAMBDA_1,
             lambda_2=LAMBDA_2,
             patience=PATIENCE,
-            optimization_method="sgd",
+            optimization_method="adam",
         )
 
         # loop through the different models
@@ -311,7 +312,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
         coherence_baseline = []
         for model in models:
             # Calculate the coherence
-            prediction = model.predict(point_of_interest.detach().numpy())
+            prediction = model.predict(cf_baseline.values)
             if isinstance(prediction, tuple):
                 prediction = prediction[0].argmax(dim=-1)
             coherence_baseline.append(prediction == DESIRED_CLASS)
