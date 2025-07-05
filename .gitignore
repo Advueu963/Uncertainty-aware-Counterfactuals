@@ -12,3 +12,7 @@ wheels/
 # Virtual environments
 .venv
 /data/
+
+# Linux Cluster
+*.cmd
+*.out

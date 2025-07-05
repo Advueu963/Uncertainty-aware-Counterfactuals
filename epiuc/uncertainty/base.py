@@ -517,16 +517,7 @@ class BaseEnsembleDNN(torch.nn.Module):
         self.uncertainty_aware: bool = True
 
         if isinstance(model, BaseDNN):
-            self.ensemble = []
-            for _ in range(n_models):
-                ensemble_member = deepcopy(model)
-                # Pertubate the weights of the ensemble, if only given one uncertainty
-                for param in ensemble_member.model.parameters():
-                    if param.requires_grad:
-                        # Add Gaussian noise to the weight parameters
-                        noise = torch.randn_like(param) * 0.01
-                        param.data += noise
-                self.ensemble.append(ensemble_member)
+            self.ensemble = [deepcopy(model) for _ in range(n_models)]
 
         elif isinstance(model, list):
             self.ensemble = deepcopy(model)
@@ -714,6 +705,7 @@ class BaseEnsembleDNN(torch.nn.Module):
         def fmodel(params, buffers, x):
             return functional_call(meta_model, (params, buffers), (x,))
 
+        regularisation = 0
         for epoch in range(n_epochs):
             avg_loss = 0
             loaders = [iter(trainloader) for _ in range(len(self.ensemble))]
@@ -742,9 +734,7 @@ class BaseEnsembleDNN(torch.nn.Module):
                 )
                 loss = (
                     vmap(partial_loss_function, randomness="same")(pred, target)
-                ).sum() - 0.01 * sum(
-                    [param.square().log2().sum() for param in batched_params.values()]
-                )
+                ).sum() - regularisation * 0.01 * sum([param.square().log2().sum() for param in batched_params.values()])
                 avg_loss += loss
 
                 # Update the params of the ensembles parallel
@@ -753,6 +743,41 @@ class BaseEnsembleDNN(torch.nn.Module):
                 self.optimizer.step()
 
             avg_loss = avg_loss / len(trainloader)
+            
+            accuracy = 0
+            if valloader is not None:
+                # Validation step
+                loaders = [iter(trainloader) for _ in range(len(self.ensemble))]
+                for batch in range(len(trainloader)):
+                     # Get the individual data batches for the ensemble models
+                    data = [next(loader) for loader in loaders]
+
+                    # gather the inputs and targets and stack for parallel application
+                    input, target = zip(*data)
+                    input = torch.stack(input).to(self.device)
+                    target = torch.stack(target).to(self.device)
+
+                    # Parallel forward pass of all ensembles
+                    pred = vmap(fmodel, randomness="same")(
+                        batched_params, batched_buffer, input
+                    )
+
+                    pred = torch.nn.functional.softmax(pred, dim=1)
+                    output = torch.mean(pred, dim=0)
+
+                    accuracy += torch.sum(
+                        torch.argmax(output, dim=1) == target[0].flatten()
+                    ).item() / target.shape[-1]
+                    # Compute the target label
+                                
+            accuracy = accuracy / len(valloader)
+            print(
+                f"Finished Epoch {epoch} from {n_epochs} with {avg_loss} and accuracy {accuracy}"
+            )
+            if accuracy > 0.8:
+                regularisation = 1
+            else:
+                regularisation = 0
             print(f"Finished Epoch {epoch} from {n_epochs} with {avg_loss}")
 
             # Adjust learning rate
