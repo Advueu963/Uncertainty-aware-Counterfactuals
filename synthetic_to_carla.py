@@ -148,10 +148,12 @@ class MyOwnModel(MLModel):
         ensemble_model = Ensemble_Classifier(base_ensemble, n_models=n_models)
         if noisy:
             ensemble_model.load(
-                f"models/Ensemble_{data.name.capitalize()}_extended_{n_epochs}/"
+                f"../models/Ensemble_{data.name.capitalize()}_extended_{n_epochs}/"
             )
         else:
-            ensemble_model.load(f"models/Ensemble_{data.name.capitalize()}_{n_epochs}/")
+            ensemble_model.load(
+                f"../models/Ensemble_{data.name.capitalize()}_{n_epochs}/"
+            )
 
         self._mymodel = ensemble_model
 

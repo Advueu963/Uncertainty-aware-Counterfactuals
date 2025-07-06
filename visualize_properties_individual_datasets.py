@@ -23,6 +23,7 @@ from property_procedures import (
     plausable_loss_function,
     similarity_loss_function,
     counter_factual_optimization_routine,
+    combined_loss_function,
 )
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -147,7 +148,7 @@ PROPERTY_LOADERS = [
         "similarity",
         similarity_loss_function,
     ),
-    # ("combined", combined_loss_function),
+    ("combined", combined_loss_function),
 ]
 
 
@@ -368,8 +369,8 @@ def visualize_eu_std_points(model, points, y_labels, save_path, delta=1, n_point
         n_points, -1
     )
 
-    au_delta_ball = torch.max(au_delta_ball, dim=0)[0]
-    max_eu_ball = torch.max(eu_delta_ball, dim=0)[0]
+    au_delta_ball = torch.mean(au_delta_ball, dim=0)
+    max_eu_ball = torch.mean(eu_delta_ball, dim=0)
 
     # Shared value range
     all_vals = torch.concatenate([au_delta_ball, max_eu_ball], dim=0)
@@ -383,7 +384,7 @@ def visualize_eu_std_points(model, points, y_labels, save_path, delta=1, n_point
 
     plots = []
     for ax, data, title in zip(
-        axes.flatten(), [au_delta_ball, max_eu_ball], ["Hyper_MAX_AU", "Hyper_MAX_EU"]
+        axes.flatten(), [au_delta_ball, max_eu_ball], ["Hyper_MEAN_AU", "Hyper_MEAN_EU"]
     ):
         # Scatter data
         ax.scatter(

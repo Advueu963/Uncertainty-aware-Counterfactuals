@@ -1,3 +1,5 @@
+import os
+
 import torch
 import numpy as np
 from epiuc.uncertainty.classification import MLP_Classifier
@@ -20,6 +22,7 @@ from property_procedures import (
     plausable_loss_function,
     similarity_loss_function,
     counter_factual_optimization_routine,
+    combined_loss_function,
 )
 import matplotlib.pyplot as plt
 from property_procedures.utils import (
@@ -27,7 +30,6 @@ from property_procedures.utils import (
     epistemic_uncertainty_ensemble,
     aleatoric_uncertainty_ensemble,
     visualize_au_eu_tu,
-    visualize_eu_std_points,
     visualize_decision_boundry,
     visualze_property,
     visualize_other_cf_methods,
@@ -45,6 +47,9 @@ DESIRED_CLASS = 1
 ENSEMBLE_MEMBER_COUNT = 20
 N_POINTS = 50
 N_EPOCHS = 50
+SAVE_FOLDER = "strips_all_datasets_50"
+if not os.path.exists(SAVE_FOLDER):
+    os.makedirs(SAVE_FOLDER)
 base_ensemble = [
     MLP_Classifier(
         input_shape=2,
@@ -145,22 +150,18 @@ PROPERTY_LOADERS = [
         "similarity",
         similarity_loss_function,
     ),
-    # ("combined", combined_loss_function),
+    ("combined", combined_loss_function),
 ]
 
-
-fig, axes = plt.subplots(
-    len(DATASET_LOADERS), len(PROPERTY_LOADERS) + 3 + 2 + 1 + 4, figsize=(90, 45)
-)
-
-
 for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LOADERS):
+    fig, axes = plt.subplots(nrows=1, ncols=len(PROPERTY_LOADERS) + 4, figsize=(80, 5))
     print(f"Training ensemble on {dataset_name}...")
     points, y_labels, y_probs = loader(**kwargs)
 
     # Train the ensemble model
     ensemble_model = Ensemble_Classifier(base_ensemble, n_models=ENSEMBLE_MEMBER_COUNT)
     ensemble_model.load(f"../models/Ensemble_{dataset_name.capitalize()}_{N_EPOCHS}/")
+    ensemble_model.compile()
 
     # Evaluate the ensemble model
     y_probs_ensemble, _ = ensemble_model.predict(points, raw_output=True)
@@ -202,7 +203,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
 
         visualze_property(
             property_name,
-            axes[i, j],
+            axes[j],
             model=ensemble_model,
             points=points,
             y_labels=y_labels,
@@ -216,13 +217,6 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
             delta=DELTA,
             n_points=N_POINTS,
         )
-    print(f"Visualizing AU, EU, TU for dataset: {dataset_name}")
-    visualize_au_eu_tu(fig, ensemble_model, points, y_labels, axes[i, -10:-7])
-
-    # Visualize the MAX EU and AU globally
-    visualize_eu_std_points(
-        fig, ensemble_model, points, y_labels, axes[i, -7:-5], delta=DELTA, n_points=10
-    )
 
     print(f"Visualize other CF Methods for dataset: {dataset_name}")
     # Visualize other CF Methods
@@ -230,23 +224,29 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
         point_of_interest,
         points,
         y_labels,
-        axes[i, -5:-1],
+        axes[-4:],
         dataset_name,
         n_models=ENSEMBLE_MEMBER_COUNT,
-        n_epochs=50,
+        n_epochs=N_EPOCHS,
         noisy=False,
     )
 
+    plt.tight_layout()
+    plt.savefig(f"{SAVE_FOLDER}/{dataset_name}_counterfactuals.pdf", dpi=50)
+
+    fig, axes = plt.subplots(nrows=1, ncols=4, figsize=(20, 5))
+
+    print(f"Visualizing AU, EU, TU for dataset: {dataset_name}")
+    visualize_au_eu_tu(fig, ensemble_model, points, y_labels, axes[:-1])
+
     print(f"Visualize decision boundary for dataset: {dataset_name}")
     visualize_decision_boundry(
-        axes[i, -1],
+        axes[-1],
         points,
         ensemble_model,
         y_labels,
         dataset_name,
         probability_function=ensemble_probs,
     )
-
-
-plt.savefig("visualize_properties_all_datasets.pdf")
-# plt.show()
+    plt.savefig(f"{SAVE_FOLDER}/{dataset_name}_uncertainty.pdf", dpi=50)
+    # plt.show()

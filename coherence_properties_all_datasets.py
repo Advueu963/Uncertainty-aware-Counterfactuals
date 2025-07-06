@@ -19,15 +19,9 @@ from data import (
     load_infinity_dataset,
 )
 from property_procedures import (
-    similarity_loss_function,
     validity_loss_function,
-    robust_loss_function,
-    feasable_loss_function,
     counter_factual_optimization_routine,
     combined_loss_function,
-    connected_loss_function,
-    discriminative_loss_function,
-    plausable_loss_function,
 )
 import matplotlib.pyplot as plt
 from property_procedures.utils import (
@@ -43,7 +37,7 @@ OPTIMIZER_LR = 0.01
 PROB_WEIGHT = 1
 LAMBDA_1 = 1
 LAMBDA_2 = 1
-MAX_STEPS = 5000
+MAX_STEPS = 1
 PATIENCE = MAX_STEPS
 DESIRED_CLASS = 1
 ENSEMBLE_MEMBER_COUNT = 20
@@ -127,30 +121,30 @@ PROPERTY_LOADERS = [
         "validity",
         validity_loss_function,
     ),
-    (
-        "connected_ball",
-        connected_loss_function,
-    ),
-    (
-        "robust",
-        robust_loss_function,
-    ),
-    (
-        "feasability",
-        feasable_loss_function,
-    ),
-    (
-        "discriminative",
-        discriminative_loss_function,
-    ),
-    (
-        "plausable",
-        plausable_loss_function,
-    ),
-    (
-        "similarity",
-        similarity_loss_function,
-    ),
+    # (
+    #     "connected_ball",
+    #     connected_loss_function,
+    # ),
+    # (
+    #     "robust",
+    #     robust_loss_function,
+    # ),
+    # (
+    #     "feasability",
+    #     feasable_loss_function,
+    # ),
+    # (
+    #     "discriminative",
+    #     discriminative_loss_function,
+    # ),
+    # (
+    #     "plausable",
+    #     plausable_loss_function,
+    # ),
+    # (
+    #     "similarity",
+    #     similarity_loss_function,
+    # ),
     ("combined", combined_loss_function),
 ]
 
@@ -270,16 +264,16 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
     coherence.append([])
     coherence_std.append([])
 
-
-
     for j, (property_name, property_function) in enumerate(PROPERTY_LOADERS):
         print(f"Evaluating property: {property_name} on dataset: {dataset_name}")
 
         # Run the property procedure
         coherence_property = []
         for _ in range(N_ITERATIONS):
-
-            counter_factual, counter_factual_steps = counter_factual_optimization_routine(
+            (
+                counter_factual,
+                counter_factual_steps,
+            ) = counter_factual_optimization_routine(
                 point_to_explain=point_of_interest,
                 model=ensemble_model,
                 probability_function=ensemble_probs,
@@ -306,28 +300,27 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
                 if isinstance(prediction, tuple):
                     prediction = prediction[0].argmax(dim=-1)
                 coherence_property.append(prediction == DESIRED_CLASS)
-        
+
         coherence[-1].append(np.array(coherence_property).flatten().mean())
         coherence_std[-1].append(np.array(coherence_property).flatten().std())
 
-    coherence_baseline = [[],[],[],[]]
+    coherence_baseline = [[], [], [], []]
     for _ in range(N_ITERATIONS):
         cf_gs, cf_clue, cf_dice, cf_face = visualize_other_cf_methods(
-                point_of_interest, dataset_name
+            point_of_interest, dataset_name
         )
-            
-        for i,cf_baseline in enumerate([cf_gs, cf_clue, cf_dice, cf_face]):
+
+        for i, cf_baseline in enumerate([cf_gs, cf_clue, cf_dice, cf_face]):
             for model in models:
-                    if cf_baseline is None:
-                        coherence_baseline[i].append(0)
-                        continue
-                    # Calculate the coherence
-                    prediction = model.predict(cf_baseline.values)
-                    if isinstance(prediction, tuple):
-                        prediction = prediction[0].argmax(dim=-1)
-                    coherence_baseline[i].append((prediction == DESIRED_CLASS).item())
-    
-        
+                if cf_baseline is None:
+                    coherence_baseline[i].append(0)
+                    continue
+                # Calculate the coherence
+                prediction = model.predict(cf_baseline.values)
+                if isinstance(prediction, tuple):
+                    prediction = prediction[0].argmax(dim=-1)
+                coherence_baseline[i].append((prediction == DESIRED_CLASS).item())
+
     coherence[-1] += [*np.array(coherence_baseline).mean(axis=1)]
     coherence_std[-1] += [*np.array(coherence_baseline).std(axis=1)]
     print(coherence[-1])

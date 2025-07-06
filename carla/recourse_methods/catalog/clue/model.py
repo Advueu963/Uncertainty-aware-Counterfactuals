@@ -80,7 +80,6 @@ class Clue(RecourseMethod):
     }
 
     def __init__(self, data: Data, mlmodel: MLModel, hyperparams: Dict = None) -> None:
-
         supported_backends = ["pytorch"]
         if mlmodel.backend not in supported_backends:
             raise ValueError(
@@ -184,7 +183,6 @@ class Clue(RecourseMethod):
         )
 
     def get_counterfactuals(self, factuals: pd.DataFrame) -> pd.DataFrame:
-
         factuals = self._mlmodel.get_ordered_features(factuals)
 
         list_cfs = []
