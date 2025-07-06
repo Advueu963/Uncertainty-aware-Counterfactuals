@@ -45,6 +45,8 @@ DESIRED_CLASS = 1
 ENSEMBLE_MEMBER_COUNT = 20
 N_POINTS = 50
 N_EPOCHS = 50
+N_ITERATIONS = 5
+OPTIMIZATION_METHOD = "sgd"  # "adam" or "sgd"
 base_ensemble = [
     MLP_Classifier(
         input_shape=2,
@@ -326,7 +328,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
 
         # Run the property procedure
         cf_poi = []
-        for _ in range(5):
+        for _ in range(N_ITERATIONS):
             (
                 counter_factual,
                 counter_factual_steps,
@@ -347,7 +349,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
                 lambda_1=LAMBDA_1,
                 lambda_2=LAMBDA_2,
                 patience=PATIENCE,
-                optimization_method="sgd",
+                optimization_method=OPTIMIZATION_METHOD,
             )
             cf_poi.append(counter_factual)
 
@@ -360,7 +362,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
 
     # Visualize other CF Methods
     l2_distances_mean = []
-    for _ in range(5):
+    for _ in range(N_ITERATIONS):
         (
             l2_distance_growing_sphere,
             l2_distance_clue,
@@ -398,5 +400,5 @@ l2_stability_data = pd.DataFrame(
 )
 print(l2_stability_data)
 # Save the L2 stability data to a CSV file
-l2_stability_data.to_csv("similarity_data.csv")
+l2_stability_data.to_csv(f"similarity_{OPTIMIZATION_METHOD}.csv")
 # plt.show()

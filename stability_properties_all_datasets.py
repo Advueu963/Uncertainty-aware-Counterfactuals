@@ -47,6 +47,8 @@ DESIRED_CLASS = 1
 ENSEMBLE_MEMBER_COUNT = 20
 N_POINTS = 50
 N_EPOCHS = 50
+N_ITERATIONS = 5  # Number of iterations for each property evaluation
+OPTIMIZATION_METHOD = "sgd"
 base_ensemble = [
     MLP_Classifier(
         input_shape=2,
@@ -732,7 +734,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
 
         # Run the property procedure
         cf_poi = []
-        for _ in range(5):
+        for _ in range(N_ITERATIONS):
             (
                 counter_factual,
                 counter_factual_steps,
@@ -753,11 +755,12 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
                 lambda_1=LAMBDA_1,
                 lambda_2=LAMBDA_2,
                 patience=PATIENCE,
+                optimization_method=OPTIMIZATION_METHOD,
             )
             cf_poi.append(counter_factual)
 
         cf_poi_close = []
-        for _ in range(5):
+        for _ in range(N_ITERATIONS):
             cf_close, cf_steps_close = counter_factual_optimization_routine(
                 point_to_explain=point_closest_to_interest,
                 model=ensemble_model,
@@ -775,7 +778,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
                 lambda_1=LAMBDA_1,
                 lambda_2=LAMBDA_2,
                 patience=PATIENCE,
-                optimization_method="sgd",
+                optimization_method=OPTIMIZATION_METHOD,
             )
             cf_poi_close.append(cf_close)
 
@@ -796,7 +799,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
 
     # Visualize other CF Methods
     l2_distances_mean = []
-    for _ in range(5):
+    for _ in range(N_ITERATIONS):
         (
             l2_distance_growing_sphere,
             l2_distance_clue,
@@ -839,4 +842,4 @@ l2_stability_data = pd.DataFrame(
 )
 print(l2_stability_data)
 # Save the L2 stability data to a CSV file
-l2_stability_data.to_csv("stability_data.csv")
+l2_stability_data.to_csv(f"stability_{OPTIMIZATION_METHOD}.csv")

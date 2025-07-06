@@ -44,6 +44,8 @@ DESIRED_CLASS = 1
 ENSEMBLE_MEMBER_COUNT = 20
 N_POINTS = 50
 N_EPOCHS = 50
+N_ITERATIONS = 5  # Number of iterations for each property evaluation
+OPTIMIZATION_METHOD = "sgd"
 base_ensemble = [
     MLP_Classifier(
         input_shape=2,
@@ -272,7 +274,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
 
         # Run the property procedure
         cf_poi = []
-        for _ in range(5):
+        for _ in range(N_ITERATIONS):
             (
                 counter_factual,
                 counter_factual_steps,
@@ -293,7 +295,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
                 lambda_1=LAMBDA_1,
                 lambda_2=LAMBDA_2,
                 patience=PATIENCE,
-                optimization_method="sgd",
+                optimization_method=OPTIMIZATION_METHOD,
             )
             cf_poi.append(counter_factual)
 
@@ -311,7 +313,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
 
     # Visualize other CF Methods
     invalidity_baselines_mean = []
-    for _ in range(5):
+    for _ in range(N_ITERATIONS):
         (
             invalidity_gs,
             invalidity_clue,
@@ -355,5 +357,5 @@ invalidity_data = pd.DataFrame(
 )
 print(invalidity_data)
 # Save the L2 stability data to a CSV file
-invalidity_data.to_csv("validity_data.csv")
+invalidity_data.to_csv(f"validity_{OPTIMIZATION_METHOD}.csv")
 # plt.show()

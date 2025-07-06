@@ -49,6 +49,8 @@ DESIRED_CLASS = 1
 ENSEMBLE_MEMBER_COUNT = 20
 N_POINTS = 50
 N_EPOCHS = 50
+N_ITERATIONS = 5
+OPTIMIZATION_METHOD = "sgd"  # "adam" or "sgd"
 base_ensemble = [
     MLP_Classifier(
         input_shape=2,
@@ -153,7 +155,7 @@ PROPERTY_LOADERS = [
 ]
 
 
-def visualize_other_cf_methods(point_of_interest, points, y_labels, axes, dataset_name):
+def visualize_other_cf_methods(point_of_interest, dataset_name):
     dataset = Synthetic_CARLA(dataset_name)
 
     model = MyOwnModel(dataset, n_models=ENSEMBLE_MEMBER_COUNT, n_epochs=N_EPOCHS)
@@ -268,68 +270,83 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
     coherence.append([])
     coherence_std.append([])
 
-    # Visualize other CF Methods
 
-    cf_gs, cf_clue, cf_dice, cf_face = visualize_other_cf_methods(
-        point_of_interest, points, y_labels, axes[i, -5:-1], dataset_name
-    )
 
     for j, (property_name, property_function) in enumerate(PROPERTY_LOADERS):
         print(f"Evaluating property: {property_name} on dataset: {dataset_name}")
 
         # Run the property procedure
-        counter_factual, counter_factual_steps = counter_factual_optimization_routine(
-            point_to_explain=point_of_interest,
-            model=ensemble_model,
-            probability_function=ensemble_probs,
-            desired_class=DESIRED_CLASS,
-            loss_function=property_function,
-            aleatoric_uncertainty_function=aleatoric_uncertainty_ensemble,
-            epistemic_uncertainty_function=epistemic_uncertainty_ensemble,
-            MAX_STEPS=MAX_STEPS,
-            delta=DELTA,
-            n_points=N_POINTS,
-            lr=OPTIMIZER_LR,
-            DESIRED_VALIDITY=DESIRED_VALIDITY,
-            p_weight=PROB_WEIGHT,
-            lambda_1=LAMBDA_1,
-            lambda_2=LAMBDA_2,
-            patience=PATIENCE,
-            optimization_method="adam",
-        )
-
-        # loop through the different models
         coherence_property = []
-        for model in models:
-            # Calculate the coherence
-            prediction = model.predict(counter_factual.detach().numpy())
-            if isinstance(prediction, tuple):
-                prediction = prediction[0].argmax(dim=-1)
-            coherence_property.append(prediction == DESIRED_CLASS)
-        coherence[-1].append(coherence_property)
+        for _ in range(N_ITERATIONS):
 
-    for cf_baseline in [cf_gs, cf_clue, cf_dice, cf_face]:
-        coherence_baseline = []
-        for model in models:
-            # Calculate the coherence
-            prediction = model.predict(cf_baseline.values)
-            if isinstance(prediction, tuple):
-                prediction = prediction[0].argmax(dim=-1)
-            coherence_baseline.append(prediction == DESIRED_CLASS)
-        coherence[-1].append(coherence_baseline)
+            counter_factual, counter_factual_steps = counter_factual_optimization_routine(
+                point_to_explain=point_of_interest,
+                model=ensemble_model,
+                probability_function=ensemble_probs,
+                desired_class=DESIRED_CLASS,
+                loss_function=property_function,
+                aleatoric_uncertainty_function=aleatoric_uncertainty_ensemble,
+                epistemic_uncertainty_function=epistemic_uncertainty_ensemble,
+                MAX_STEPS=MAX_STEPS,
+                delta=DELTA,
+                n_points=N_POINTS,
+                lr=OPTIMIZER_LR,
+                DESIRED_VALIDITY=DESIRED_VALIDITY,
+                p_weight=PROB_WEIGHT,
+                lambda_1=LAMBDA_1,
+                lambda_2=LAMBDA_2,
+                patience=PATIENCE,
+                optimization_method=OPTIMIZATION_METHOD,
+            )
 
+            # loop through the different models
+            for model in models:
+                # Calculate the coherence
+                prediction = model.predict(counter_factual.detach().numpy())
+                if isinstance(prediction, tuple):
+                    prediction = prediction[0].argmax(dim=-1)
+                coherence_property.append(prediction == DESIRED_CLASS)
+        
+        coherence[-1].append(np.array(coherence_property).flatten().mean())
+        coherence_std[-1].append(np.array(coherence_property).flatten().std())
 
-coherence = np.array(coherence)
-coherence = coherence.mean(axis=(-2, -1))
-dataframe = pd.DataFrame(
-    coherence,
-    columns=[
-        *[property_name for property_name, _ in PROPERTY_LOADERS],
-        "GS",
-        "CLUE",
-        "DICE",
-        "FACE",
-    ],
-    index=[dataset_name for dataset_name, _, _, _ in DATASET_LOADERS],
+    coherence_baseline = [[],[],[],[]]
+    for _ in range(N_ITERATIONS):
+        cf_gs, cf_clue, cf_dice, cf_face = visualize_other_cf_methods(
+                point_of_interest, dataset_name
+        )
+            
+        for i,cf_baseline in enumerate([cf_gs, cf_clue, cf_dice, cf_face]):
+            for model in models:
+                    if cf_baseline is None:
+                        coherence_baseline[i].append(0)
+                        continue
+                    # Calculate the coherence
+                    prediction = model.predict(cf_baseline.values)
+                    if isinstance(prediction, tuple):
+                        prediction = prediction[0].argmax(dim=-1)
+                    coherence_baseline[i].append((prediction == DESIRED_CLASS).item())
+    
+        
+    coherence[-1] += [*np.array(coherence_baseline).mean(axis=1)]
+    coherence_std[-1] += [*np.array(coherence_baseline).std(axis=1)]
+    print(coherence[-1])
+
+print(coherence)
+print(coherence_std)
+
+coherence_data = pd.DataFrame(
+    np.array(
+        [
+            [
+                f"{values} +/- {std}"
+                for values, std in zip(coherence[i], coherence_std[i])
+            ]
+            for i in range(len(coherence))
+        ]
+    ),
+    index=[f"{dataset_name}" for dataset_name, _, _, _ in DATASET_LOADERS],
+    columns=[property_name for property_name, _ in PROPERTY_LOADERS]
+    + ["GS", "CLUE", "DICE", "FACE"],
 )
-dataframe.to_csv("coherence.csv")
+coherence_data.to_csv(f"coherence_{OPTIMIZATION_METHOD}.csv")
