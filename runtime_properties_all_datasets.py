@@ -34,7 +34,7 @@ from property_procedures.utils import (
 )
 from synthetic_to_carla import Synthetic_CARLA, MyOwnModel
 
-DESIRED_VALIDITY = 0.999
+DESIRED_VALIDITY = 0.501
 DELTA = 0.2
 OPTIMIZER_LR = 0.01
 PROB_WEIGHT = 1
@@ -47,7 +47,7 @@ ENSEMBLE_MEMBER_COUNT = 20
 N_POINTS = 50
 N_EPOCHS = 50
 N_ITERATIONS = 5  # Number of iterations for each property evaluation
-OPTIMIZATION_METHOD = "adam"
+OPTIMIZATION_METHOD = "sgd"
 base_ensemble = [
     MLP_Classifier(
         input_shape=2,
@@ -302,5 +302,5 @@ l2_stability_data = pd.DataFrame(
 )
 print(l2_stability_data)
 # Save the L2 stability data to a CSV file
-l2_stability_data.to_csv(f"time_{OPTIMIZATION_METHOD}.csv")
+l2_stability_data.to_csv(f"time_{OPTIMIZATION_METHOD}_min_validity.csv")
 # plt.show()
