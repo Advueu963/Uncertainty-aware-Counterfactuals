@@ -22,6 +22,7 @@ from property_procedures import (
     plausable_loss_function,
     similarity_loss_function,
     counter_factual_optimization_routine,
+    combined_loss_function
 )
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -149,7 +150,7 @@ PROPERTY_LOADERS = [
         "similarity",
         similarity_loss_function,
     ),
-    # ("combined", combined_loss_function),
+    ("combined", combined_loss_function),
 ]
 
 
