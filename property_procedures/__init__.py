@@ -1,5 +1,6 @@
 from .connected import (
     connected_loss_function,
+    connected_loss_function_reference_point,
 )
 from .valid import validity_loss_function
 from .robust import robust_loss_function
@@ -25,4 +26,5 @@ __all__ = [
     "counter_factual_optimization_routine",
     "sparse_loss_function",
     "combined_loss_function",
+    "connected_loss_function_reference_point",
 ]

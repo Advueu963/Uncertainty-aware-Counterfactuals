@@ -1,13 +1,7 @@
 from epiuc.uncertainty.classification import MLP_Classifier
 from epiuc.uncertainty.wrapper import Ensemble_Classifier
 from data import (
-    load_l_dataset,
-    load_ring_dataset,
-    load_bubbles,
-    load_bubbles_noisy,
-    load_one_moon,
-    load_two_moon,
-    load_infinity_dataset,
+    load_breast_dataset,
 )
 
 ENSEMBLE_MEMBER_COUNT = 20
@@ -15,7 +9,7 @@ N_EPOCHS = 50
 BATCH_SIZE = 128
 base_ensemble = [
     MLP_Classifier(
-        input_shape=2,
+        input_shape=30,
         n_classes=2,
         n_layers=2,
         num_neurons=64,
@@ -28,17 +22,18 @@ base_ensemble = [
 ensemble_model = Ensemble_Classifier(base_ensemble, n_models=ENSEMBLE_MEMBER_COUNT)
 
 DATASET_LOADERS = [
-    ("bubbles", load_bubbles, {"n_samples": 1000}),
-    ("l_dataset", load_l_dataset, {"n_samples": 333}),
-    ("one_moon", load_one_moon, {"n_samples": 1000}),
-    (
-        "ring_dataset",
-        load_ring_dataset,
-        {"n_samples": 1000, "inner_radius": 1.0, "outer_radius": 2.0, "noise": 0.1},
-    ),
-    ("bubbles_noisy", load_bubbles_noisy, {"n_samples": 1000}),
-    ("two_moon", load_two_moon, {"n_samples": 1000}),
-    ("infinity_dataset", load_infinity_dataset, {"n_samples": 1000}),
+    # ("bubbles", load_bubbles, {"n_samples": 1000}),
+    # ("l_dataset", load_l_dataset, {"n_samples": 333}),
+    # ("one_moon", load_one_moon, {"n_samples": 1000}),
+    # (
+    #     "ring_dataset",
+    #     load_ring_dataset,
+    #     {"n_samples": 1000, "inner_radius": 1.0, "outer_radius": 2.0, "noise": 0.1},
+    # ),
+    # ("bubbles_noisy", load_bubbles_noisy, {"n_samples": 1000}),
+    # ("two_moon", load_two_moon, {"n_samples": 1000}),
+    # ("infinity_dataset", load_infinity_dataset, {"n_samples": 1000}),
+    ("breast_cancer", load_breast_dataset, {"n_samples": "all"}),
 ]
 
 for dataset_name, loader, kwargs in DATASET_LOADERS:

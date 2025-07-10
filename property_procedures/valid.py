@@ -12,6 +12,7 @@ def validity_loss_function(
     delta=0.1,
     n_points=10,
     start_cf_construction=False,
+    **kwargs,
 ):
     probs_ensemble = probability_function(model, counter_factual)
     probs = probs_ensemble.mean(dim=1)

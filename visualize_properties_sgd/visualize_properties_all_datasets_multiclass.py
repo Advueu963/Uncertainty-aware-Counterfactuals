@@ -65,7 +65,7 @@ DATASET_LOADERS = [
         load_bubbles_multiclass,
         {"n_samples": 1000},
         torch.tensor(
-            np.array([3.9, 3.9]).reshape(-1, 2), dtype=torch.float, requires_grad=True
+            np.array([3, 3]).reshape(-1, 2), dtype=torch.float, requires_grad=True
         ),
     ),
     (
@@ -127,7 +127,7 @@ PROPERTY_LOADERS = [
 
 
 for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LOADERS):
-    fig, axes = plt.subplots(nrows=1, ncols=len(PROPERTY_LOADERS), figsize=(80, 5))
+    fig, axes = plt.subplots(nrows=1, ncols=len(PROPERTY_LOADERS), figsize=(80, 10))
     print(f"Training ensemble on {dataset_name}...")
     points, y_labels, y_probs = loader(**kwargs)
 
@@ -189,6 +189,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
             dataset_name=dataset_name,
             delta=DELTA,
             n_points=N_POINTS,
+            DESIRED_CLASS=DESIRED_CLASS,
             multi_class=True,
         )
 

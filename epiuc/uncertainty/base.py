@@ -744,7 +744,7 @@ class BaseEnsembleDNN(torch.nn.Module):
 
             avg_loss = avg_loss / len(trainloader)
             
-            accuracy = 0
+            accuracy = 1
             if valloader is not None:
                 # Validation step
                 loaders = [iter(trainloader) for _ in range(len(self.ensemble))]
@@ -770,10 +770,10 @@ class BaseEnsembleDNN(torch.nn.Module):
                     ).item() / target.shape[-1]
                     # Compute the target label
                                 
-            accuracy = accuracy / len(valloader)
-            print(
-                f"Finished Epoch {epoch} from {n_epochs} with {avg_loss} and accuracy {accuracy}"
-            )
+                accuracy = accuracy / len(valloader)
+                print(
+                    f"Finished Epoch {epoch} from {n_epochs} with {avg_loss} and accuracy {accuracy}"
+                )
             if accuracy > 0.8:
                 regularisation = 1
             else:

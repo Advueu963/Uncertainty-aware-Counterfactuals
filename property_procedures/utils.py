@@ -123,7 +123,7 @@ def counter_factual_baseline(
     # generate counterfactual examples
     print("Factuals:")
     print(point_of_interest_df)
-    for _ in range(10):
+    for _ in range(5):
         try:
             counterfactuals_growing_sphere = gs.get_counterfactuals(
                 point_of_interest_df

@@ -162,6 +162,32 @@ def load_bubbles_noisy(n_samples=1000):
     return points, y_labels, y_probs
 
 
+def load_breast_dataset(n_samples=1000):
+    """
+    Load the breast cancer dataset from sklearn and return it as a PyTorch tensor.
+    """
+    from sklearn.datasets import load_breast_cancer
+
+    data = load_breast_cancer()
+    X = torch.tensor(data.data, dtype=torch.float32)
+    y = torch.tensor(data.target, dtype=torch.long)
+
+    return X, y, None
+
+
+def load_breast_dataset_poi(start_class=0):
+    """
+    Load the breast cancer dataset from sklearn and return it as a PyTorch tensor.
+    """
+    np.random.seed(42)
+
+    X, y, _ = load_breast_dataset()
+    X_startclass = X[y == start_class]
+    idx_cfs = np.random.choice(X_startclass.shape[0], size=100, replace=False)
+    X_cfs = X_startclass[idx_cfs]
+    return X_cfs
+
+
 def load_ring_dataset(n_samples=1000, inner_radius=1.0, outer_radius=2.0, noise=0.1):
     """
     Generate a synthetic dataset with class 0 in the center and class 1 in a surrounding ring.

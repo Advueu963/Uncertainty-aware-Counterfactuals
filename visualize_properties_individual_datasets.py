@@ -24,6 +24,7 @@ from property_procedures import (
     similarity_loss_function,
     counter_factual_optimization_routine,
     combined_loss_function,
+    connected_loss_function_reference_point,
 )
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -127,6 +128,10 @@ PROPERTY_LOADERS = [
     (
         "connected_ball",
         connected_loss_function,
+    ),
+    (
+        "connected_reference_point",
+        connected_loss_function_reference_point,
     ),
     (
         "robust",
@@ -629,6 +634,13 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
     )
     print("-" * 40)
 
+    # Extract reference point
+    probs, _ = ensemble_model.predict(
+        X=points[y_labels == DESIRED_CLASS], raw_output=False
+    )
+    idx_max_point = probs[:, DESIRED_CLASS].argmax()
+    point_of_reference = torch.tensor(np.array([1, 0])).float().view(1, -1)
+
     for j, (property_name, property_function) in enumerate(PROPERTY_LOADERS):
         print(f"Evaluating property: {property_name} on dataset: {dataset_name}")
 
@@ -651,6 +663,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
             lambda_2=LAMBDA_2,
             patience=PATIENCE,
             optimization_method="sgd",
+            reference_point=point_of_reference,
         )
 
         match property_name:
@@ -671,6 +684,22 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
                     n_points=N_POINTS,
                 )
             case "connected_ball":
+                visualze_path_with_underlying(
+                    ensemble_model,
+                    dataset_folder,
+                    points,
+                    y_labels,
+                    point_of_interest,
+                    counter_factual,
+                    counter_factual_steps,
+                    -LAMBDA_1,
+                    0,
+                    dataset_name,
+                    property_name,
+                    delta=DELTA,
+                    n_points=N_POINTS,
+                )
+            case "connected_reference_point":
                 visualze_path_with_underlying(
                     ensemble_model,
                     dataset_folder,

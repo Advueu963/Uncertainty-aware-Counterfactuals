@@ -20,6 +20,7 @@ def counter_factual_optimization_routine(
     delta=0.1,
     n_points=10,
     optimization_method="adam",
+    **kwargs,
 ):
     counter_factual = point_to_explain.detach().clone().requires_grad_(True)
     counter_factual_steps = counter_factual.detach().clone()
@@ -62,14 +63,10 @@ def counter_factual_optimization_routine(
             delta=delta,
             n_points=n_points,
             start_cf_construction=start_cf_construction,
+            **kwargs,
         )
 
         counter_factual.grad = grad
-
-        # most_salient = grad.abs().argmax().item()
-        # update_grad = torch.zeros_like(grad)
-        # update_grad[0,most_salient] = (-1)**(grad[0,most_salient] < 0)
-        # counter_factual.grad = update_grad
 
         optimizer.step()
         # print(counter_factual,au, t)
