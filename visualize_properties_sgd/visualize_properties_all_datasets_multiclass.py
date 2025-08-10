@@ -20,6 +20,7 @@ from property_procedures import (
     similarity_loss_function,
     counter_factual_optimization_routine,
     combined_loss_function,
+    discriminative_loss_function_2,
 )
 import matplotlib.pyplot as plt
 from property_procedures.utils import (
@@ -113,6 +114,10 @@ PROPERTY_LOADERS = [
     (
         "discriminative",
         discriminative_loss_function,
+    ),
+    (
+        "discriminative2",
+        discriminative_loss_function_2,
     ),
     (
         "plausable",

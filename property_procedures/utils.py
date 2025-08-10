@@ -457,6 +457,26 @@ def visualze_property(
                 noisy=noisy,
                 multi_class=multi_class,
             )
+        case "discriminative2":
+            visualze_path_with_underlying(
+                model,
+                ax,
+                points,
+                y_labels,
+                point_of_interest,
+                counter_factual,
+                counter_factual_steps,
+                p_weight,
+                0,
+                -lambda_2,
+                dataset_name,
+                property_name,
+                delta=delta,
+                n_points=n_points,
+                DESIRED_CLASS=DESIRED_CLASS,
+                noisy=noisy,
+                multi_class=multi_class,
+            )
         case "plausable":
             visualze_path_with_underlying(
                 model,
