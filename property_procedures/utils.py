@@ -9,11 +9,15 @@ from synthetic_to_carla import Synthetic_CARLA, MyOwnModel
 
 
 def sample_delta_ball(reference_point, delta, n_points):
-    """
-    :param point:
-    :param delta:
-    :param norm:
-    :return:
+    """Samples points from a delta-ball around a reference point.
+
+    Args:
+        reference_point (np.ndarray): The center point of the delta-ball.
+        delta (float): The radius of the delta-ball.
+        n_points (int): The number of points to sample.
+
+    Returns:
+        torch.Tensor: A tensor containing the sampled points.
     """
     delta_samples = []
     for _ in range(n_points):
@@ -56,12 +60,29 @@ def sample_line(x1, x2, num_samples=10):
 
 
 def ensemble_probs(ensemble_model, points):
+    """Compute Ensemble probabilities for given points using `epiuc` package.
+
+    Args:
+        ensemble_model (epiuc.classification.EnsembleClassifier): The ensemble model to use for predictions.
+        points (torch.Tensor): The input points for which to compute probabilities.
+
+    Returns:
+        torch.Tensor: The computed probabilities for the input points.
+    """
     probs, _ = ensemble_model.predict(points, raw_output=True)
     probs = (probs + 1e-8) / (1 + 1e-8)  # Avoid log(0) issues and zero gradients
     return probs
 
 
 def total_uncertainty_ensemble(y_probs_ensemble):
+    """Compute the total uncertainty for an ensemble of models.
+
+    Args:
+        y_probs_ensemble (torch.Tensor): The predicted probabilities from the ensemble.
+
+    Returns:
+        torch.Tensor: The total uncertainty for the ensemble.
+    """
     y_probs_mean = y_probs_ensemble.mean(dim=1)
     return (
         y_probs_mean.mul(y_probs_mean.log2())
@@ -72,6 +93,14 @@ def total_uncertainty_ensemble(y_probs_ensemble):
 
 
 def aleatoric_uncertainty_ensemble(y_probs_ensemble):
+    """Compute the aleatoric uncertainty for an ensemble of models.
+
+    Args:
+        y_probs_ensemble (torch.Tensor): The predicted probabilities from the ensemble.
+
+    Returns:
+        torch.Tensor: The aleatoric uncertainty for the ensemble.
+    """
     return (
         y_probs_ensemble.mul((y_probs_ensemble + 1e-8).log2())
         .sum(dim=-1)
@@ -82,6 +111,14 @@ def aleatoric_uncertainty_ensemble(y_probs_ensemble):
 
 
 def epistemic_uncertainty_ensemble(y_probs_ensemble):
+    """Compute the epistemic uncertainty for an ensemble of models.
+
+    Args:
+        y_probs_ensemble (torch.Tensor): The predicted probabilities from the ensemble.
+
+    Returns:
+        torch.Tensor: The epistemic uncertainty for the ensemble.
+    """
     return (
         total_uncertainty_ensemble(y_probs_ensemble)
         - aleatoric_uncertainty_ensemble(y_probs_ensemble)
@@ -91,6 +128,19 @@ def epistemic_uncertainty_ensemble(y_probs_ensemble):
 def counter_factual_baseline(
     dataset_name, point_of_interest, n_models, n_epochs, noisy
 ):
+    """Counterfactual baseline generation.
+
+    Args:
+        dataset_name (str): The name of the dataset.
+        point_of_interest (torch.Tensor): The point of interest for counterfactual generation.
+        n_models (int): The number of models in the ensemble.
+        n_epochs (int): The number of training epochs.
+        noisy (bool): Whether the dataset is noisy.
+
+    Returns:
+        tuple: A tuple containing the generated counterfactuals.
+    """
+
     dataset = Synthetic_CARLA(dataset_name, noisy)
     model = MyOwnModel(dataset, n_models=n_models, n_epochs=n_epochs, noisy=noisy)
     # load artificial neural networke from catalog
@@ -174,6 +224,17 @@ def counter_factual_baseline(
 
 
 def distance_func(point_of_interest, cf_point_of_interest, X):
+    """Compute the distance between a point of interest and its counterfactual.
+
+
+    Args:
+        point_of_interest (torch.Tensor): The original point of interest.
+        cf_point_of_interest (torch.Tensor): The counterfactual point of interest.
+        X (torch.Tensor): The dataset.
+
+    Returns:
+        torch.Tensor: The computed distance.
+    """
     abs_distances = torch.abs(point_of_interest - cf_point_of_interest)
     data_median = torch.median(X, axis=0).values
     median_absolute_deviation = torch.median(torch.abs(X - data_median), axis=0).values
@@ -188,6 +249,14 @@ def instability_metric(
 ):
     """
     Calculate the dissimilarity metric between two points and their counterfactuals.
+    Args:
+        point_of_interest (torch.Tensor): The original point of interest.
+        point_to_compare (torch.Tensor): The point to compare against.
+        cf_point_of_interest (torch.Tensor): The counterfactual point of interest.
+        cf_point_to_compare (torch.Tensor): The counterfactual point to compare against.
+        X (torch.Tensor): The dataset.
+    Returns:
+        float: The dissimilarity metric.
     """
     # Calculate the Euclidean distance between the points and their counterfactuals
     distance_original = distance_func(point_of_interest, point_to_compare, X)
@@ -207,6 +276,15 @@ def discriminative_power(
 ):
     """
     Calculate the discriminative power of a point of interest and its counterfactual.
+    Args:
+        point_of_interest (torch.Tensor): The original point of interest.
+        cf_point_of_interest (torch.Tensor): The counterfactual point of interest.
+        class_poi (int): The class of the point of interest.
+        class_cf (int): The class of the counterfactual point of interest.
+        X_equal_poi (np.ndarray): List of points that are equal to the point of interest.
+        X_diff_poi (np.ndarray): List of points that are different from the point of interest.
+    Returns:
+        float: The discriminative power metric
     """
     k_nn = KNeighborsClassifier(n_neighbors=1)
     X_train = np.vstack([point_of_interest, cf_point_of_interest])
@@ -224,6 +302,17 @@ def discriminative_power(
 
 
 def dissimilarity(point_of_interest, cf_point_of_interest, X):
+    """Calculate the dissimilarity between a point of interest and its counterfactual.
+
+    Args:
+        point_of_interest (torch.Tensor): The original point of interest.
+        cf_point_of_interest (torch.Tensor): The counterfactual point of interest.
+        X (torch.Tensor): The dataset.
+
+    Returns:
+        float: The dissimilarity metric.
+    """
+
     # Calculate the Euclidean distance between the points and their counterfactuals
     distance_original = distance_func(point_of_interest, cf_point_of_interest, X)
 
@@ -232,12 +321,28 @@ def dissimilarity(point_of_interest, cf_point_of_interest, X):
 
 
 def dissparsity(point_of_interest, cf_point_of_interest):
+    """Calculate the dissparsity between a point of interest and its counterfactual.
+
+    Args:
+        point_of_interest (torch.Tensor): The original point of interest.
+        cf_point_of_interest (torch.Tensor): The counterfactual point of interest.
+
+    Returns:
+        float: The dissparsity metric.
+    """
+
     return np.mean(point_of_interest != cf_point_of_interest)
 
 
 def implausability(cf_point_of_interest, X):
     """
     Calculate the implausibility of a counterfactual point.
+
+    Args:
+        cf_point_of_interest (torch.Tensor): The counterfactual point of interest.
+        X (torch.Tensor): The training data.
+    Returns:
+        float: The implausibility metric.
     """
     # Calculate the distance from the counterfactual point to the training data
     distances = torch.tensor(
@@ -250,6 +355,13 @@ def implausability(cf_point_of_interest, X):
 def invalidity(cf_point_of_interest, model, probability_function, desired_class=1):
     """
     Calculate the invalidity of a counterfactual point.
+    Args:
+        cf_point_of_interest (torch.Tensor): The counterfactual point of interest.
+        model (torch.nn.Module): The model used for prediction.
+        probability_function (callable): The function to compute probabilities.
+        desired_class (int): The class for which to compute the invalidity.
+    Returns:
+        float: The invalidity metric.
     """
     # Get the probabilities of the counterfactual point
     probs_ensemble = probability_function(model, cf_point_of_interest)
