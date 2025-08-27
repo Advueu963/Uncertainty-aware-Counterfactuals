@@ -22,6 +22,12 @@ from property_procedures import (
     validity_loss_function,
     counter_factual_optimization_routine,
     combined_loss_function,
+    discriminative_loss_function,
+    connected_loss_function,
+    robust_loss_function,
+    feasable_loss_function,
+    plausable_loss_function,
+    similarity_loss_function,
 )
 import matplotlib.pyplot as plt
 from property_procedures.utils import (
@@ -37,7 +43,7 @@ OPTIMIZER_LR = 0.01
 PROB_WEIGHT = 1
 LAMBDA_1 = 1
 LAMBDA_2 = 1
-MAX_STEPS = 1
+MAX_STEPS = 5000
 PATIENCE = MAX_STEPS
 DESIRED_CLASS = 1
 ENSEMBLE_MEMBER_COUNT = 20
@@ -121,30 +127,30 @@ PROPERTY_LOADERS = [
         "validity",
         validity_loss_function,
     ),
-    # (
-    #     "connected_ball",
-    #     connected_loss_function,
-    # ),
-    # (
-    #     "robust",
-    #     robust_loss_function,
-    # ),
-    # (
-    #     "feasability",
-    #     feasable_loss_function,
-    # ),
-    # (
-    #     "discriminative",
-    #     discriminative_loss_function,
-    # ),
-    # (
-    #     "plausable",
-    #     plausable_loss_function,
-    # ),
-    # (
-    #     "similarity",
-    #     similarity_loss_function,
-    # ),
+    (
+        "connected_ball",
+        connected_loss_function,
+    ),
+    (
+        "robust",
+        robust_loss_function,
+    ),
+    (
+        "feasability",
+        feasable_loss_function,
+    ),
+    (
+        "discriminative",
+        discriminative_loss_function,
+    ),
+    (
+        "plausable",
+        plausable_loss_function,
+    ),
+    (
+        "similarity",
+        similarity_loss_function,
+    ),
     ("combined", combined_loss_function),
 ]
 

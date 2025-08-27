@@ -9,7 +9,7 @@ from .discriminative import discriminative_loss_function, discriminative_loss_fu
 from .stability import stability_loss_function
 from .plausable import plausable_loss_function
 from .similarity import similarity_loss_function
-from .optimization import counter_factual_optimization_routine
+from .optimization import counter_factual_optimization_routine, counter_factual_optimization_routine_schut
 from .sparse import sparse_loss_function
 from .combined import combined_loss_function
 
@@ -24,6 +24,7 @@ __all__ = [
     "plausable_loss_function",
     "similarity_loss_function",
     "counter_factual_optimization_routine",
+    "counter_factual_optimization_routine_schut",
     "sparse_loss_function",
     "combined_loss_function",
     "connected_loss_function_reference_point",

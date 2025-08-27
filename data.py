@@ -443,6 +443,8 @@ def load_datasets(dataset_name, noisy=False, **kwargs):
         X, y_labels, y_probs = load_bubbles_noisy(**kwargs)
     elif dataset_name == "infinity_dataset":
         X, y_labels, y_probs = load_infinity_dataset(**kwargs)
+    elif dataset_name =="breast_cancer":
+        X, y_labels, y_probs = load_breast_dataset(**kwargs)
     else:
         raise ValueError(f"Unknown dataset name: {dataset_name}")
 

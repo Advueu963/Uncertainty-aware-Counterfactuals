@@ -25,6 +25,13 @@ class Synthetic_CARLA(Data):
                     "label": y,
                 }
             )
+        elif dataset_name == "breast_cancer":
+            data_set = pd.DataFrame(
+                {
+                    **{f"x{i}": X[:, i] for i in range(30)},
+                    "label": y,
+                }
+            )
         else:
             data_set = pd.DataFrame({"x0": X[:, 0], "x1": X[:, 1], "label": y})
         self._dataset = data_set
@@ -43,6 +50,8 @@ class Synthetic_CARLA(Data):
     def continuous(self):
         if self.noisy:
             return ["x0", "x1"] + [f"noise_{i}" for i in range(8)]
+        elif self.name == "breast_cancer":
+            return [f"x{i}" for i in range(30)]
         else:
             return ["x0", "x1"]
 
@@ -145,6 +154,7 @@ class MyOwnModel(MLModel):
             )
             for _ in range(n_models)
         ]
+        self.name = data.name
         ensemble_model = Ensemble_Classifier(base_ensemble, n_models=n_models)
         if noisy:
             ensemble_model.load(
@@ -160,6 +170,8 @@ class MyOwnModel(MLModel):
     def feature_input_order(self):
         if self.noisy:
             return ["x0", "x1"] + [f"noise_{i}" for i in range(8)]
+        elif self.name == "breast_cancer":
+            return [f"x{i}" for i in range(30)]
         else:
             return ["x0", "x1"]
 

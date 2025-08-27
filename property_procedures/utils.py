@@ -92,12 +92,12 @@ def counter_factual_baseline(
     dataset_name, point_of_interest, n_models, n_epochs, noisy
 ):
     dataset = Synthetic_CARLA(dataset_name, noisy)
-    model = MyOwnModel(dataset, n_models=n_models, n_epochs=n_epochs, noisy=noisy)
+    model = MyOwnModel(dataset, n_models=n_models, n_epochs=n_epochs, noisy=noisy, input_shape=30)
     # load artificial neural networke from catalog
     # model = MLModelCatalog(dataset, "ann", backend="pytorch")
     # load a recourse model and pass black box model
     gs = GrowingSpheres(model)
-    clue = Clue(dataset, model)
+    #clue = Clue(dataset, model)
     dice = Dice(model)
     fa = Face(model, {"mode": "knn", "fraction": 0.2})
     if noisy:
@@ -109,6 +109,13 @@ def counter_factual_baseline(
                     f"noise_{i}": point_of_interest[:, i + 2].detach().numpy()
                     for i in range(8)
                 },
+                "label": 1,
+            }
+        )
+    elif dataset_name == "breast_cancer":
+        point_of_interest_df = pd.DataFrame(
+            {
+                **{f"x{i}": point_of_interest[:, i].detach().numpy() for i in range(30)},
                 "label": 1,
             }
         )
@@ -142,14 +149,15 @@ def counter_factual_baseline(
     # generate counterfactual examples using CLUE
     for _ in range(5):
         try:
-            counterfactuals_clue = clue.get_counterfactuals(point_of_interest_df)
-            print(counterfactuals_clue)
+            #counterfactuals_clue = clue.get_counterfactuals(point_of_interest_df)
+            #print(counterfactuals_clue)
             break
         except ValueError as e:
             print(f"Error generating counterfactuals with CLUE: {e}")
             counterfactuals_clue = None
             # If an error occurs, you might want to handle it or retry
             # For example, you could log the error or adjust parameters
+    counterfactuals_clue = None  # CLUE is not implemented in the current version
     for _ in range(5):
         try:
             counterfactuals_face = fa.get_counterfactuals(point_of_interest_df)

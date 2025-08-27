@@ -6,6 +6,7 @@ from data import (
     load_breast_dataset,
     load_breast_dataset_poi,
 )
+from joblib import Parallel, delayed
 from property_procedures import (
     validity_loss_function,
     connected_loss_function,
@@ -42,17 +43,7 @@ OPTIMIZATION_METHOD = "sgd"
 
 breast_cancer_poi = load_breast_dataset_poi()
 
-base_ensemble = [
-    MLP_Classifier(
-        input_shape=30,
-        n_classes=2,
-        n_layers=2,
-        num_neurons=64,
-        dropout_prob=0,
-        batch_norm=False,
-    )
-    for _ in range(ENSEMBLE_MEMBER_COUNT)
-]
+
 
 
 DATASET_LOADERS = [
@@ -92,11 +83,23 @@ PROPERTY_LOADERS = [
 ]
 
 
-for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LOADERS):
+def main_routine(i, dataset_name, loader, kwargs, point_of_interest):
+    print("Starting main routine for point of interest:", point_of_interest)
     print(f"Training ensemble on {dataset_name}...")
     points, y_labels, y_probs = loader(**kwargs)
 
     # Train the ensemble model
+    base_ensemble = [
+        MLP_Classifier(
+            input_shape=30,
+            n_classes=2,
+            n_layers=2,
+            num_neurons=64,
+            dropout_prob=0,
+            batch_norm=False,
+        )
+        for _ in range(ENSEMBLE_MEMBER_COUNT)
+    ]
     ensemble_model = Ensemble_Classifier(base_ensemble, n_models=ENSEMBLE_MEMBER_COUNT)
     ensemble_model.load(f"models/Ensemble_{dataset_name.capitalize()}_{N_EPOCHS}/")
 
@@ -227,10 +230,21 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
     # shape: (N_ITERATIONS, 4, 2, 1)
     property_to_cfs["baselines_close"] = cfs_baseline
 
-    SAVE_FOLDER = f"saved_cfs/counterfactuals_{dataset_name}_{N_EPOCHS}_{MAX_STEPS}/"
-    if not os.path.exists(SAVE_FOLDER):
-        os.makedirs(SAVE_FOLDER)
     np.savez(
-        os.path.join(SAVE_FOLDER, f"counter_factuals_{dataset_name}_{i}.npz"),
+        os.path.join(f"saved_cfs/counterfactuals_{dataset_name}_{N_EPOCHS}_{MAX_STEPS}/", f"counter_factuals_{dataset_name}_{i}.npz"),
         **property_to_cfs,
     )
+
+if __name__ == "__main__":
+    for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LOADERS):
+        SAVE_FOLDER = f"saved_cfs/counterfactuals_{dataset_name}_{N_EPOCHS}_{MAX_STEPS}/"
+        if not os.path.exists(SAVE_FOLDER):
+            os.makedirs(SAVE_FOLDER)
+    
+    Parallel(n_jobs=-1)(
+            delayed(main_routine) (i,dataset_name, loader, kwargs, point_of_interest)
+
+            for  i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LOADERS)
+            if i not in [8 , 9,  11, 13, 20]
+        )
+    
