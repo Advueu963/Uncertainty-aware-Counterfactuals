@@ -22,6 +22,33 @@ def counter_factual_optimization_routine(
     optimization_method="adam",
     **kwargs,
 ):
+    """Counterfactual optimization routine.
+
+    Args:
+        point_to_explain (torch.Tensor): The point to explain.
+        model (torch.nn.Module): The model to optimize.
+        loss_function (callable): The loss function to use.
+        probability_function (callable): The function to compute probabilities.
+        aleatoric_uncertainty_function (callable): The function to compute aleatoric uncertainty.
+        epistemic_uncertainty_function (callable): The function to compute epistemic uncertainty.
+        desired_class (int): The class to achieve.
+        MAX_STEPS (int, optional): The maximum number of optimization steps. Defaults to 1000.
+        DESIRED_VALIDITY (float, optional): The desired validity of the counterfactual. Defaults to 0.8.
+        lr (float, optional): The learning rate for the optimizer. Defaults to 0.01.
+        p_weight (int, optional): The weight for the probability loss. Defaults to 1.
+        lambda_1 (float, optional): The weight for the first regularization term. Defaults to 0.1.
+        lambda_2 (float, optional): The weight for the second regularization term. Defaults to 0.7.
+        patience (int, optional): The number of steps to wait for improvement before stopping. Defaults to 10.
+        delta (float, optional): The perturbation size for generating counterfactuals. Defaults to 0.1.
+        n_points (int, optional): The number of points to sample for uncertainty estimation. Defaults to 10.
+        optimization_method (str, optional): The optimization method to use. Defaults to "adam".
+
+    Raises:
+        ValueError: If the optimization method is not supported.
+
+    Returns:
+        torch.Tensor: The optimized counterfactual.
+    """
     counter_factual = point_to_explain.detach().clone().requires_grad_(True)
     counter_factual_steps = counter_factual.detach().clone()
     # Initialize the optimizer

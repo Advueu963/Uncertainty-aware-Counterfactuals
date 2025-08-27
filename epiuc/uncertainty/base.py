@@ -705,7 +705,7 @@ class BaseEnsembleDNN(torch.nn.Module):
         def fmodel(params, buffers, x):
             return functional_call(meta_model, (params, buffers), (x,))
 
-        regularisation = 0
+        regularisation = 1
         for epoch in range(n_epochs):
             avg_loss = 0
             loaders = [iter(trainloader) for _ in range(len(self.ensemble))]
@@ -743,13 +743,14 @@ class BaseEnsembleDNN(torch.nn.Module):
                 self.optimizer.step()
 
             avg_loss = avg_loss / len(trainloader)
-            
+
             accuracy = 1
+            count = 0
             if valloader is not None:
                 # Validation step
-                loaders = [iter(trainloader) for _ in range(len(self.ensemble))]
-                for batch in range(len(trainloader)):
-                     # Get the individual data batches for the ensemble models
+                loaders = [iter(valloader) for _ in range(len(self.ensemble))]
+                for batch in range(len(valloader)):
+                    # Get the individual data batches for the ensemble models
                     data = [next(loader) for loader in loaders]
 
                     # gather the inputs and targets and stack for parallel application
@@ -767,14 +768,15 @@ class BaseEnsembleDNN(torch.nn.Module):
 
                     accuracy += torch.sum(
                         torch.argmax(output, dim=1) == target[0].flatten()
-                    ).item() / target.shape[-1]
+                    ).item()
+                    count += target.shape[-1]
                     # Compute the target label
-                                
-                accuracy = accuracy / len(valloader)
+
+                accuracy = accuracy / count
                 print(
                     f"Finished Epoch {epoch} from {n_epochs} with {avg_loss} and accuracy {accuracy}"
                 )
-            if accuracy > 0.8:
+            if accuracy >= 0.8:
                 regularisation = 1
             else:
                 regularisation = 0

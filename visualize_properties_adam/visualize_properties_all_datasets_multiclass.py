@@ -12,6 +12,7 @@ from data import (
 )
 from property_procedures import (
     validity_loss_function,
+    discriminative_loss_function,
     discriminative_loss_function_2,
     counter_factual_optimization_routine,
     feasable_loss_function,
@@ -32,13 +33,13 @@ from property_procedures.utils import (
 )
 
 DESIRED_VALIDITY = 0.999
-DELTA = 0.5
+DELTA = 0.2
 OPTIMIZER_LR = 0.01
 PROB_WEIGHT = 1
 LAMBDA_1 = 1
 LAMBDA_2 = 1
 MAX_STEPS = 5000
-PATIENCE = 5000
+PATIENCE = MAX_STEPS
 DESIRED_CLASS = 2
 ENSEMBLE_MEMBER_COUNT = 20
 N_POINTS = 50
@@ -65,7 +66,7 @@ DATASET_LOADERS = [
         load_bubbles_multiclass,
         {"n_samples": 1000},
         torch.tensor(
-            np.array([3.9, 3.9]).reshape(-1, 2), dtype=torch.float, requires_grad=True
+            np.array([3, 3]).reshape(-1, 2), dtype=torch.float, requires_grad=True
         ),
     ),
     (
@@ -112,6 +113,10 @@ PROPERTY_LOADERS = [
     ),
     (
         "discriminative",
+        discriminative_loss_function,
+    ),
+    (
+        "discriminative2",
         discriminative_loss_function_2,
     ),
     (
@@ -189,6 +194,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
             dataset_name=dataset_name,
             delta=DELTA,
             n_points=N_POINTS,
+            DESIRED_CLASS=DESIRED_CLASS,
             multi_class=True,
         )
 
