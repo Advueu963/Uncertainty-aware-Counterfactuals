@@ -654,40 +654,49 @@ def visualze_property(
 def visualize_au_eu_tu(
     fig, ensemble_model, points, y_labels, axes, noisy=False, multi_class=False
 ):
-    # Visualze AU, EU, TU
-    grid_points = np.linspace(points.min() - 5, points.max() + 5, 100)
+    # Enhanced uncertainty visualization with improved aesthetics
+    grid_resolution = 150  # Higher resolution for smoother contours
+    grid_points = np.linspace(points.min() - 5, points.max() + 5, grid_resolution)
     xx, yy = np.meshgrid(grid_points, grid_points)
     grid_points = np.array([xx.flatten(), yy.flatten()]).T
+
     # Get the labels of the grid_points
     tensor_points = torch.tensor(grid_points, dtype=torch.float32)
     if noisy:
         tensor_points = torch.hstack(
             [tensor_points, torch.zeros((tensor_points.shape[0], 8))]
         )
+
     y_probs_ensemble = ensemble_probs(ensemble_model, tensor_points)
     total_uncertainty = total_uncertainty_ensemble(y_probs_ensemble)
     aleatoric_uncertainty = aleatoric_uncertainty_ensemble(y_probs_ensemble)
     epistemic_uncertainty = epistemic_uncertainty_ensemble(y_probs_ensemble)
-    # Shared value range
+
+    # Shared value range for consistent comparison
     all_vals = torch.concatenate(
         [total_uncertainty, aleatoric_uncertainty, epistemic_uncertainty], dim=0
     )
     vmin = all_vals.min()
     vmax = all_vals.max()
-    # Define shared levels and normalization
-    levels = torch.linspace(vmin, vmax, 15)
+
+    # Enhanced color scheme - using a professional colormap
+    cmap = mpl.cm.plasma  # Professional colormap
+    levels = 20  # More levels for smoother gradients
     norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
-    cmap = mpl.cm.viridis
+
     plots = []
-    for ax, values, title in zip(
-        axes,
-        [total_uncertainty, aleatoric_uncertainty, epistemic_uncertainty],
-        ["TU", "AU", "EU"],
-    ):
-        # Scatter data
+    uncertainty_data = [total_uncertainty, aleatoric_uncertainty, epistemic_uncertainty]
+    titles = [
+        "Total Uncertainty (TU)",
+        "Aleatoric Uncertainty (AU)",
+        "Epistemic Uncertainty (EU)",
+    ]
+
+    for ax, values, title in zip(axes, uncertainty_data, titles):
+        # Enhanced data point visualization
         visualize_data_points(ax, points, y_labels, multi_class=multi_class)
 
-        # Unified contourf
+        # Enhanced contour plot with more levels
         contour = ax.contourf(
             xx,
             yy,
@@ -695,16 +704,48 @@ def visualize_au_eu_tu(
             levels=levels,
             cmap=cmap,
             norm=norm,
-            alpha=0.5,
+            alpha=0.7,
         )
+
+        # Add contour lines for better definition
+        ax.contour(
+            xx,
+            yy,
+            values.detach().numpy().reshape(xx.shape),
+            levels=10,
+            colors="white",
+            alpha=0.3,
+            linewidths=0.5,
+        )
+
         plots.append(contour)
 
-        ax.set_title(title)
-        ax.set_xlabel("X1")
-        ax.set_ylabel("X2")
-    # Single shared colorbar using one of the contour handles
-    fig.colorbar(plots[0], ax=axes, shrink=0.8, label="Uncertainty Measure Value")
-    print("_" * 40)
+        # Enhanced styling
+        ax.set_title(title, fontsize=12, fontweight="bold", pad=10)
+        ax.set_xlabel("Feature 1", fontsize=11, fontweight="medium")
+        ax.set_ylabel("Feature 2", fontsize=11, fontweight="medium")
+
+        # Enhanced grid and background
+        ax.grid(True, alpha=0.2, linestyle=":", linewidth=0.5)
+        ax.set_facecolor("#fafafa")
+
+        # Add subtle border styling
+        for spine in ax.spines.values():
+            spine.set_color("gray")
+            spine.set_linewidth(0.8)
+
+    # Enhanced colorbar with better positioning and styling
+    cbar = fig.colorbar(plots[0], ax=axes, shrink=0.8, aspect=30, pad=0.02)
+    cbar.set_label("Uncertainty Value", fontsize=11, fontweight="medium")
+    cbar.ax.tick_params(labelsize=9)
+
+    # Set overall figure title
+    fig.suptitle(
+        "Uncertainty Analysis: Total, Aleatoric, and Epistemic Components",
+        fontsize=14,
+        fontweight="bold",
+        y=0.95,
+    )
 
 
 def visualize_decision_boundry(
@@ -717,10 +758,11 @@ def visualize_decision_boundry(
     noisy=False,
     multi_class=False,
 ):
-    # Visualize decision boundary
+    # Enhanced decision boundary visualization
+    grid_resolution = 200  # Higher resolution for smoother boundaries
     xx, yy = np.meshgrid(
-        np.linspace(points[:, 0].min() - 2, points[:, 0].max() + 2, 100),
-        np.linspace(points[:, 1].min() - 2, points[:, 1].max() + 2, 100),
+        np.linspace(points[:, 0].min() - 2, points[:, 0].max() + 2, grid_resolution),
+        np.linspace(points[:, 1].min() - 2, points[:, 1].max() + 2, grid_resolution),
     )
     grid_points = np.c_[xx.ravel(), yy.ravel()]
     tensor_points = torch.tensor(grid_points, dtype=torch.float32)
@@ -728,19 +770,66 @@ def visualize_decision_boundry(
         tensor_points = torch.hstack(
             [tensor_points, torch.zeros((tensor_points.shape[0], 8))]
         )
+
     grid_probs_ensemble = probability_function(model, tensor_points)
     grid_probs = grid_probs_ensemble.mean(dim=1)
     grid_labels = grid_probs.argmax(dim=1).numpy()
     grid_labels = grid_labels.reshape(xx.shape)
-    ax.contourf(xx, yy, grid_labels, alpha=0.5, cmap="coolwarm")
-    ax.set_title(f"Decision Boundary - {dataset_name}")
-    ax.set_xlabel("X1")
-    ax.set_ylabel("X2")
+
+    # Enhanced color scheme for decision boundaries
+    if multi_class:
+        # Professional color scheme for multiclass
+        colors = ["#E3F2FD", "#FFF3E0", "#E8F5E8", "#FCE4EC"]  # Light versions
+        cmap = mpl.colors.ListedColormap(colors[: len(np.unique(grid_labels))])
+    else:
+        # Professional blue-red scheme for binary classification
+        cmap = mpl.colors.ListedColormap(["#E3F2FD", "#FFEBEE"])
+
+    # Plot decision boundary with enhanced styling
+    _ = ax.contourf(
+        xx, yy, grid_labels, alpha=0.3, cmap=cmap, levels=len(np.unique(grid_labels))
+    )
+
+    # Add decision boundary lines
+    ax.contour(
+        xx, yy, grid_labels, colors="gray", alpha=0.6, linewidths=1.5, linestyles="--"
+    )
+
+    # Enhanced title and labels
+    if dataset_name:
+        ax.set_title(
+            f"Decision Boundary: {dataset_name}", fontsize=12, fontweight="bold", pad=10
+        )
+    else:
+        ax.set_title("Decision Boundary", fontsize=12, fontweight="bold", pad=10)
+
+    ax.set_xlabel("Feature 1", fontsize=11, fontweight="medium")
+    ax.set_ylabel("Feature 2", fontsize=11, fontweight="medium")
+
+    # Visualize data points with enhanced styling
     visualize_data_points(ax, points, y_labels, multi_class=multi_class)
-    ax.legend()
+
+    # Enhanced legend styling
+    legend = ax.legend(
+        loc="best", frameon=True, fancybox=True, shadow=True, fontsize=9, framealpha=0.9
+    )
+    if legend:
+        legend.get_frame().set_facecolor("white")
+        legend.get_frame().set_edgecolor("gray")
+        legend.get_frame().set_linewidth(0.5)
+
+    # Enhanced grid and styling
+    ax.grid(True, alpha=0.2, linestyle=":", linewidth=0.5)
+    ax.set_facecolor("#fafafa")
+
+    # Set axis limits with proper padding
     ax.set_xlim(points[:, 0].min() - 1, points[:, 0].max() + 1)
     ax.set_ylim(points[:, 1].min() - 1, points[:, 1].max() + 1)
-    print("_" * 40)
+
+    # Add subtle border styling
+    for spine in ax.spines.values():
+        spine.set_color("gray")
+        spine.set_linewidth(0.8)
 
 
 def visualze_path_with_underlying(
@@ -829,71 +918,131 @@ def visualze_path_with_underlying(
 
 
 def visualize_cf_path(ax, counter_factual, counter_factual_steps, point_of_interest):
+    # Enhanced color scheme for counterfactual visualization
+    colors = {
+        "poi": "#2E3440",  # Dark gray for point of interest
+        "cf": "#5E81AC",  # Professional blue for counterfactual
+        "path": "#A3BE8C",  # Soft green for path
+        "line": "#81A1C1",  # Light blue for connecting line
+    }
+
+    # Plot connecting line between original point and counterfactual
+    if len(counter_factual_steps) > 1:
+        ax.plot(
+            [point_of_interest[0, 0].detach(), counter_factual[0, 0]],
+            [point_of_interest[0, 1].detach(), counter_factual[0, 1]],
+            color=colors["line"],
+            alpha=0.6,
+            linewidth=2,
+            linestyle="--",
+            zorder=2,
+            label="Optimization Path",
+        )
+
+    # Plot optimization steps with enhanced styling
+    if len(counter_factual_steps) > 0:
+        ax.scatter(
+            counter_factual_steps[:, 0],
+            counter_factual_steps[:, 1],
+            marker=".",
+            s=15,
+            alpha=0.6,
+            c=colors["path"],
+            edgecolors="white",
+            linewidth=0.3,
+            label="Optimization Steps",
+            zorder=3,
+        )
+
+    # Plot point of interest with enhanced styling
     ax.scatter(
         point_of_interest[:, 0].detach(),
         point_of_interest[:, 1].detach(),
-        marker="s",
-        s=50,
-        alpha=1,
-        color="indigo",
+        marker="*",
+        s=120,
+        alpha=0.9,
+        c=colors["poi"],
+        edgecolors="white",
+        linewidth=1.5,
         label="Point of Interest",
+        zorder=5,
     )
+
+    # Plot counterfactual with enhanced styling
     ax.scatter(
         counter_factual[:, 0],
         counter_factual[:, 1],
-        marker="s",
-        s=50,
-        color="aqua",
-        label="CF",
-    )
-    ax.scatter(
-        counter_factual_steps[:, 0],
-        counter_factual_steps[:, 1],
-        marker=".",
-        s=3,
-        alpha=0.5,
-        color="lime",
-        label="CF Steps",
+        marker="D",
+        s=80,
+        alpha=0.9,
+        c=colors["cf"],
+        edgecolors="white",
+        linewidth=1.2,
+        label="Counterfactual",
+        zorder=5,
     )
 
 
 def visualize_data_points(ax, points, y_labels, multi_class=False):
+    # Enhanced color scheme and styling for data points
+    colors = {
+        "class0": "#1f77b4",  # Professional blue
+        "class1": "#ff7f0e",  # Professional orange
+        "class2": "#2ca02c",  # Professional green
+        "class3": "#d62728",  # Professional red
+    }
+
+    # Enhanced styling for binary classification
     ax.scatter(
         points[y_labels == 0, 0],
         points[y_labels == 0, 1],
-        marker="s",
-        s=2,
-        alpha=0.3,
-        color="blue",
+        marker="o",
+        s=25,
+        alpha=0.7,
+        c=colors["class0"],
+        edgecolors="white",
+        linewidth=0.5,
         label="Class 0",
+        zorder=3,
     )
     ax.scatter(
         points[y_labels == 1, 0],
         points[y_labels == 1, 1],
-        marker="o",
-        s=2,
-        alpha=0.3,
-        color="red",
+        marker="s",
+        s=25,
+        alpha=0.7,
+        c=colors["class1"],
+        edgecolors="white",
+        linewidth=0.5,
         label="Class 1",
+        zorder=3,
     )
+
+    # Enhanced styling for multiclass
     if multi_class:
         ax.scatter(
             points[y_labels == 2, 0],
             points[y_labels == 2, 1],
-            marker="s",
-            s=2,
-            alpha=0.3,
-            color="green",
+            marker="^",
+            s=25,
+            alpha=0.7,
+            c=colors["class2"],
+            edgecolors="white",
+            linewidth=0.5,
             label="Class 2",
+            zorder=3,
         )
         ax.scatter(
             points[y_labels == 3, 0],
             points[y_labels == 3, 1],
-            marker="s",
-            s=2,
-            alpha=0.3,
-            color="orange",
+            marker="D",
+            s=25,
+            alpha=0.7,
+            c=colors["class3"],
+            edgecolors="white",
+            linewidth=0.5,
             label="Class 3",
+            zorder=3,
         )
 
 
