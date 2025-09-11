@@ -49,7 +49,7 @@ ENSEMBLE_MEMBER_COUNT = 20
 N_POINTS = 50
 N_EPOCHS = 50
 N_ITERATIONS = 5  # Number of iterations for each property evaluation
-OPTIMIZATION_METHOD = "sgd"
+OPTIMIZATION_METHOD = "adam"
 base_ensemble = [
     MLP_Classifier(
         input_shape=2,

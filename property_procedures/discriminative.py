@@ -40,13 +40,13 @@ def discriminative_loss_function(
     # Extract loss value
     probs_ensemble = probability_function(model, counter_factual)
     probs = probs_ensemble.mean(dim=1)
-    au = aleatoric_uncertainty_function(probs_ensemble)
+    tu = aleatoric_uncertainty_function(probs_ensemble) + epistemic_uncertainty_function(probs_ensemble)
 
     target_probs = probs[0, desired_class]
 
     loss = p_weight * target_probs.log2()
     if target_probs > 0.51:
-        loss = loss - lambda_1 * au.log2()
+        loss = loss - lambda_1 * tu.log2()
     loss = loss.mul(-1)
 
     loss.backward()

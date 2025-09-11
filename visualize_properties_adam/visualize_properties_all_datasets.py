@@ -160,7 +160,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
 
     # Train the ensemble model
     ensemble_model = Ensemble_Classifier(base_ensemble, n_models=ENSEMBLE_MEMBER_COUNT)
-    ensemble_model.load(f"../models/Ensemble_{dataset_name.capitalize()}_{N_EPOCHS}/")
+    ensemble_model.load(f"models/Ensemble_{dataset_name.capitalize()}_{N_EPOCHS}/")
     ensemble_model.compile()
 
     # Evaluate the ensemble model
@@ -232,7 +232,7 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
     )
 
     plt.tight_layout()
-    plt.savefig(f"{SAVE_FOLDER}/{dataset_name}_counterfactuals.pdf", dpi=50)
+    plt.savefig(f"{SAVE_FOLDER}/{dataset_name}_counterfactuals.png", dpi=200)
 
     fig, axes = plt.subplots(nrows=1, ncols=4, figsize=(20, 5))
 
@@ -248,5 +248,5 @@ for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LO
         dataset_name,
         probability_function=ensemble_probs,
     )
-    plt.savefig(f"{SAVE_FOLDER}/{dataset_name}_uncertainty.pdf", dpi=50)
+    plt.savefig(f"{SAVE_FOLDER}/{dataset_name}_uncertainty.png", dpi=200)
     # plt.show()

@@ -923,21 +923,20 @@ def visualize_cf_path(ax, counter_factual, counter_factual_steps, point_of_inter
         "poi": "#2E3440",  # Dark gray for point of interest
         "cf": "#5E81AC",  # Professional blue for counterfactual
         "path": "#A3BE8C",  # Soft green for path
-        "line": "#81A1C1",  # Light blue for connecting line
     }
 
-    # Plot connecting line between original point and counterfactual
-    if len(counter_factual_steps) > 1:
-        ax.plot(
-            [point_of_interest[0, 0].detach(), counter_factual[0, 0]],
-            [point_of_interest[0, 1].detach(), counter_factual[0, 1]],
-            color=colors["line"],
-            alpha=0.6,
-            linewidth=2,
-            linestyle="--",
-            zorder=2,
-            label="Optimization Path",
-        )
+    # # Plot connecting line between original point and counterfactual
+    # if len(counter_factual_steps) > 1:
+    #     ax.plot(
+    #         [point_of_interest[0, 0].detach(), counter_factual[0, 0]],
+    #         [point_of_interest[0, 1].detach(), counter_factual[0, 1]],
+    #         color=colors["line"],
+    #         alpha=0.6,
+    #         linewidth=2,
+    #         linestyle="--",
+    #         zorder=2,
+    #         label="Optimization Path",
+    #     )
 
     # Plot optimization steps with enhanced styling
     if len(counter_factual_steps) > 0:

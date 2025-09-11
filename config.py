@@ -52,8 +52,8 @@ SCHEDULER_CONFIGS = {
 
 
 DEFAULT_CONFIGS = {
-    "backend": "aot_eager",
-    "device": "mps",
+    "backend": "inductor",
+    "device": "cuda",
     "dtype": "float32",
     "seed": 42,
     "verbose": False,
