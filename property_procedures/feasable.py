@@ -46,17 +46,23 @@ def feasable_loss_function(
     # # sample_ball
     delta_ball = sample_delta_ball(counter_factual.detach().numpy(), delta, n_points)
     # delta_ball = get_knn_points(counter_factual, k=n_points)
-    probs_ensemble_delta_ball = probability_function(model, delta_ball)
-    eu_delta_ball = epistemic_uncertainty_function(probs_ensemble_delta_ball)
+    probs_ensemble_delta_ball = probability_function(
+        model, delta_ball.reshape(-1, *counter_factual.shape[1:])
+    )
+    eu_delta_ball = epistemic_uncertainty_function(probs_ensemble_delta_ball).reshape(
+        counter_factual.shape[0], -1
+    )
 
-    target_probs = probs[0, desired_class]
+    target_probs = probs[:, desired_class]
 
     # loss = -target_probs + t*tu_point
-    loss = (p_weight * target_probs.log2()) - lambda_1 * (eu_delta_ball.mean().log2())
+    loss = (p_weight * target_probs.log2()) - lambda_1 * (
+        eu_delta_ball.mean(dim=1).log2()
+    )
     loss = loss.mul(-1)
 
     # loss = (1-lam)*(-target_probs_delta_ball.mean()) + lam*tu_delta_ball.std()
 
-    loss.backward()
+    loss.sum().backward()
 
-    return loss, counter_factual.grad + delta_ball.grad.sum(dim=0, keepdim=True)
+    return loss, counter_factual.grad + delta_ball.grad.sum(dim=1)

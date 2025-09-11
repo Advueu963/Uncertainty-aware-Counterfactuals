@@ -1,4 +1,5 @@
 from property_procedures.utils import sample_delta_ball, sample_line
+import torch
 
 
 def connected_loss_function(
@@ -40,28 +41,45 @@ def connected_loss_function(
     # Extract loss value
     probs_ensemble = probability_function(model, counter_factual)
     probs = probs_ensemble.mean(dim=1)
+    # print( "CF SHape", counter_factual.shape)
 
     # # sample_ball
     delta_ball = sample_delta_ball(counter_factual.detach().numpy(), delta, n_points)
+    # print("Delta ball shape", delta_ball.shape)
     # delta_ball = get_knn_points(counter_factual, k=n_points)
-    probs_ensemble_delta_ball = probability_function(model, delta_ball)
+    probs_ensemble_delta_ball = probability_function(
+        model, delta_ball.reshape(-1, *counter_factual.shape[1:])
+    )
     probs_delta_ball = probs_ensemble_delta_ball.mean(dim=1)
-    eu_delta_ball = epistemic_uncertainty_function(probs_ensemble_delta_ball)
+    eu_delta_ball = epistemic_uncertainty_function(probs_ensemble_delta_ball).reshape(
+        counter_factual.shape[0], -1
+    )
 
-    target_probs = probs[0, desired_class]
+    # print("Probs delta ball shape", probs_delta_ball.shape)
+    # print("EU delta ball shape", eu_delta_ball.shape)
+    # print("Probs shape", probs.shape)
+
+    target_probs = probs[:, desired_class]
     _ = probs_delta_ball[:, desired_class]
 
     loss = p_weight * target_probs.log2()
-    if target_probs > 0.51:
-        loss = loss - lambda_1 * (eu_delta_ball.mean().log2())
-
+    loss = loss - torch.where(
+        target_probs > 0, lambda_2 * (eu_delta_ball.mean(dim=1).log2()), 0
+    )
     loss = loss.mul(-1)
 
-    loss.backward()
-    if target_probs < 0.51:
-        grad = counter_factual.grad
-    else:
-        grad = counter_factual.grad + delta_ball.grad.sum(dim=0)
+    # print("Loss", loss.shape)
+
+    loss.sum().backward()
+    # print("Delta ball grad shape", delta_ball.grad.shape)
+    # print("CF grad shape", counter_factual.grad.shape)
+    # print("target shape ", (counter_factual.grad + delta_ball.grad.sum(dim=1)).shape)
+    grad = torch.where(
+        (target_probs < 0.51).unsqueeze(1),
+        counter_factual.grad + delta_ball.grad.sum(dim=1),
+        counter_factual.grad,
+    )
+
     return loss, grad
 
 

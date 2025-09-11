@@ -104,12 +104,12 @@ def counter_factual_optimization_routine(
         target_probs = probs[0, desired_class]
 
         # Check for early stopping
-        if abs(prior_loss - loss.item()) < 0.01:
+        if abs(prior_loss - loss.mean().item()) < 0.01:
             patience_counter += 1
         else:
             patience_counter = 0
 
-        prior_loss = loss.item()
+        prior_loss = loss.mean().item()
         # Save the intermediate steps
         counter_factual_steps = torch.cat(
             (counter_factual_steps, counter_factual.detach())

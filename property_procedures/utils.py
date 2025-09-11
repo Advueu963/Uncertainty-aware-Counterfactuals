@@ -28,7 +28,7 @@ def sample_delta_ball(reference_point, delta, n_points):
     samples = np.concatenate(delta_samples, axis=0)
     delta_samples = (reference_point + samples).astype(np.float32)
     return torch.tensor(
-        delta_samples.reshape(-1, *reference_point.shape[1:])
+        delta_samples.reshape(reference_point.shape[0], -1, *reference_point.shape[1:])
     ).requires_grad_(True)
 
 

@@ -56,8 +56,8 @@ SCHEDULER_CONFIGS = {
 
 
 DEFAULT_CONFIGS = {
-    "backend": "cudagraphs",
-    "device": "cuda",
+    "backend": "inductor",
+    "device": "mps",
     "dtype": "float32",
     "seed": 42,
     "verbose": False,
@@ -72,7 +72,7 @@ DATALOADER_CONFIGS = {
     "batch_size": 128,
     "shuffle": True,
     "num_workers": 0,
-    "pin_memory": True,
+    "pin_memory": False,
 }
 
 IMAGENET_C_PERTUBATIONS = [

@@ -1,3 +1,4 @@
+import torch
 from property_procedures.utils import sample_delta_ball
 
 
@@ -43,18 +44,24 @@ def similarity_loss_function(
 
     # sample ball
     delta_ball = sample_delta_ball(counter_factual.detach().numpy(), delta, n_points)
-    probs_ensemble_delta_ball = probability_function(model, delta_ball)
-    au_delta_ball = aleatoric_uncertainty_function(probs_ensemble_delta_ball)
+    probs_ensemble_delta_ball = probability_function(
+        model, delta_ball.reshape(-1, *counter_factual.shape[1:])
+    )
+    au_delta_ball = aleatoric_uncertainty_function(probs_ensemble_delta_ball).reshape(
+        counter_factual.shape[0], -1
+    )
 
-    target_probs = probs[0, desired_class]
+    target_probs = probs[:, desired_class]
     # Calculate the loss
-    loss = p_weight * target_probs.log2()
-    if target_probs > 0.5:
-        loss = loss + lambda_2 * au_delta_ball.max().log2()
+    loss = p_weight * target_probs.log2() + torch.where(
+        target_probs > 0.5, lambda_1 * (au_delta_ball.max(dim=1).values.log2()), 0
+    )
     loss = loss.mul(-1)
 
-    loss.backward()
+    loss.sum().backward()
 
-    return loss, counter_factual.grad + (
-        delta_ball.grad.sum(dim=0, keepdim=True) if delta_ball.grad is not None else 0
+    grad = counter_factual.grad + torch.where(
+        (target_probs > 0.5)[:, None], delta_ball.grad.sum(dim=1), 0
     )
+
+    return loss, grad

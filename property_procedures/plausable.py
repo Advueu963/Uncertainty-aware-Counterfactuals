@@ -1,3 +1,6 @@
+import torch
+
+
 def plausable_loss_function(
     point_to_explain,
     counter_factual,
@@ -39,13 +42,12 @@ def plausable_loss_function(
     probs = probs_ensemble.mean(dim=1)
     eu = epistemic_uncertainty_function(probs_ensemble)
 
-    target_probs = probs[0, desired_class]
+    target_probs = probs[:, desired_class]
 
     loss = p_weight * target_probs.log2()
-    if target_probs > 0.5:
-        loss = loss - lambda_1 * eu.log2()
+    loss = loss - torch.where(target_probs > 0.5, lambda_1 * eu.log2(), 0)
     loss = loss.mul(-1)
 
-    loss.backward()
+    loss.sum().backward()
 
     return loss, counter_factual.grad
