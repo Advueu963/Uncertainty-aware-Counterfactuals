@@ -22,4 +22,5 @@ class CustomDataset(Dataset):
     def __getitem__(self, idx):
         if self.transform:
             return self.transform(self.X[idx]), self.Y[idx]
+        
         return self.X[idx], self.Y[idx]

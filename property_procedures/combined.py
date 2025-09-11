@@ -1,4 +1,5 @@
 from property_procedures.utils import sample_delta_ball
+import torch
 
 
 def combined_loss_function(
@@ -44,23 +45,31 @@ def combined_loss_function(
 
     # sample_ball
     delta_ball = sample_delta_ball(counter_factual.detach().numpy(), delta, n_points)
-    probs_ensemble_delta_ball = probability_function(model, delta_ball)
+    probs_ensemble_delta_ball = probability_function(
+        model, delta_ball.reshape(-1, *counter_factual.shape[1:])
+    )
     _ = probs_ensemble_delta_ball.mean(dim=1)[:, desired_class]
-    eu_delta_ball = epistemic_uncertainty_function(probs_ensemble_delta_ball)
-    au_delta_ball = aleatoric_uncertainty_function(probs_ensemble_delta_ball)
+    eu_delta_ball = epistemic_uncertainty_function(probs_ensemble_delta_ball).reshape(
+        counter_factual.shape[0], -1
+    )
+    au_delta_ball = aleatoric_uncertainty_function(probs_ensemble_delta_ball).reshape(
+        counter_factual.shape[0], -1
+    )
 
-    target_probs = probs[0, desired_class]
+    target_probs = probs[:, desired_class]
 
     # Calculate the loss
     loss = (
         -(p_weight * target_probs.log2())
-        + (eu_delta_ball.mean().log2())
-        - au_delta_ball.max().log2()
+        + (eu_delta_ball.mean(dim=1).log2())
+        - au_delta_ball.max(dim=1).values.log2()
     )
-    if target_probs > 0.501:
-        loss = loss + (au_delta_ball.mean().log2())
-    loss.backward()
+    loss = loss + torch.where(
+        target_probs > 0.501, lambda_2 * (au_delta_ball.mean(dim=1).log2()), 0
+    )
 
-    grad = counter_factual.grad + delta_ball.grad.sum(dim=0, keepdim=True)
+    loss.sum().backward()
+
+    grad = counter_factual.grad + delta_ball.grad.sum(dim=1)
 
     return loss, grad

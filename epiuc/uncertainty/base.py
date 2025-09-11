@@ -119,6 +119,10 @@ class BaseDNN(torch.nn.Module):
 
         # Saving the best uncertainty weights in validation
         self.best_model_weights = None
+        
+        # Feature statistics for adaptive epsilon
+        self.feature_stats = None
+        self.epsilon_method = "std"  # Default method
 
     def set_device(self, device) -> None:
         """
@@ -167,22 +171,97 @@ class BaseDNN(torch.nn.Module):
         """
         # Zero your gradients for every batch!
         self.optimizer.zero_grad(set_to_none=True)
+        
+        # Enable gradient computation for inputs (required for FGSM)
+        inputs.requires_grad_(True)
 
-        # Compute forward pass
+        # Compute forward pass for clean examples
         outputs = self(inputs)
-
         # Computes loss and gradient
-        loss = self.loss_function(outputs, labels, **kwargs)
-        if loss.isnan():
+
+        loss_clean = self.loss_function(outputs, labels, **kwargs)
+        if loss_clean.isnan():
             print(
                 f"Loss is NaN at epoch:{kwargs['epoch']} and iter:{kwargs['iterpoch']}"
             )
             raise ValueError("Loss is NaN")
-        loss.backward()
-
+        
+        # Compute gradients w.r.t. inputs for FGSM
+        loss_clean.backward(retain_graph=True)
+        
+        # Feature-wise epsilon calculation
+        epsilon = self._compute_feature_wise_epsilon(inputs)
+        
+        # Generate adversarial examples using FGSM with feature-wise epsilon
+        adversarial_input = inputs + epsilon * inputs.grad.sign()
+        
+        # Clamp adversarial inputs to valid range (adjust bounds as needed)
+        adversarial_input = torch.clamp(adversarial_input, min=inputs.min(), max=inputs.max())
+        
+        # Clear input gradients before next forward pass
+        inputs.grad.zero_()
+        
+        # Forward pass with adversarial examples
+        outputs_adv = self(adversarial_input)
+        loss_adv = self.loss_function(outputs_adv, labels, **kwargs)
+        
+        # Total loss (clean + adversarial)
+        total_loss = 0.5 * loss_clean + 0.5 * loss_adv
+        
+        # Backward pass for the combined loss
+        total_loss.backward()
+        
         # Adjust learning weights
         self.optimizer.step()
-        return loss
+        return total_loss
+
+    def _compute_feature_wise_epsilon(self, inputs: torch.Tensor, method: str = "std") -> torch.Tensor:
+        """
+        Compute feature-wise epsilon values for adversarial perturbations.
+        
+        :param inputs: Input tensor of shape (batch_size, n_features)
+        :param method: Method to compute epsilon ('std', 'mad', 'iqr', 'minmax', 'adaptive')
+        :return: Epsilon tensor of shape (1, n_features) or (batch_size, n_features)
+        """
+        if method == "std":
+            # Use standard deviation of each feature
+            epsilon = 0.5* torch.std(inputs, dim=0, keepdim=True)
+            
+        elif method == "mad":
+            # Use Median Absolute Deviation (more robust to outliers)
+            median = torch.median(inputs, dim=0, keepdim=True)[0]
+            mad = torch.median(torch.abs(inputs - median), dim=0, keepdim=True)[0]
+            epsilon = 0.1 * mad
+            
+        elif method == "iqr":
+            # Use Interquartile Range
+            q75 = torch.quantile(inputs, 0.75, dim=0, keepdim=True)
+            q25 = torch.quantile(inputs, 0.25, dim=0, keepdim=True)
+            iqr = q75 - q25
+            epsilon = 0.05 * iqr
+            
+        elif method == "minmax":
+            # Use feature range (max - min)
+            feature_min = torch.min(inputs, dim=0, keepdim=True)[0]
+            feature_max = torch.max(inputs, dim=0, keepdim=True)[0]
+            feature_range = feature_max - feature_min
+            epsilon = 0.02 * feature_range  # 2% of range
+            
+        elif method == "adaptive":
+            # Adaptive based on gradient magnitude
+            with torch.no_grad():
+                grad_magnitude = torch.abs(inputs.grad)
+                # Normalize by feature-wise gradient statistics
+                feature_grad_std = torch.std(grad_magnitude, dim=0, keepdim=True)
+                epsilon = 0.1 * feature_grad_std
+                
+        else:
+            raise ValueError(f"Unknown epsilon method: {method}")
+        
+        # Ensure epsilon is not too small (minimum threshold)
+        epsilon = torch.clamp(epsilon, min=1e-6)
+        
+        return epsilon
 
     def val_step(
         self, inputs: torch.Tensor, labels: torch.Tensor, **kwargs
@@ -655,15 +734,19 @@ class BaseEnsembleDNN(torch.nn.Module):
                 # Get the individual data batches for the ensemble models
 
                 for i, model in enumerate(self.ensemble):
-                    input, target = next(loaders[i])
+                    inputs, target = next(loaders[i])
 
-                    # Preparte input&target for uncertainty
-                    input, target = pad_inputs(trainloader.batch_size, input, target)
-                    input = input.to(self.device)
+                    # Prepare input&target for uncertainty
+                    inputs, target = pad_inputs(trainloader.batch_size, inputs, target)
+                    inputs = inputs.to(self.device)
                     target = target.to(self.device)
 
                     # Make training step for uncertainty
-                    avg_loss += model.train_step(input, target)
+                    avg_loss += model.train_step(inputs, target, **{
+                        "iterpoch": batch,
+                        "epoch": epoch,
+                        "n_batches": len(trainloader),
+                    })
 
             avg_loss = avg_loss / len(trainloader)
             print(f"Finished Epoch {epoch} from {n_epochs} with {avg_loss}")
