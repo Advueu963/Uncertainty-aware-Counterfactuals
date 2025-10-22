@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
-from data import (
+from MasterThesis.src.uncertainty_cfs.data import (
     load_bubbles,
     load_bubbles_noisy,
     load_infinity_dataset,

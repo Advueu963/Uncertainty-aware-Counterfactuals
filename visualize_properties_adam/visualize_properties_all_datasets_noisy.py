@@ -4,7 +4,7 @@ import torch
 import numpy as np
 from epiuc.uncertainty.classification import MLP_Classifier
 from epiuc.uncertainty.wrapper import Ensemble_Classifier
-from data import load_datasets
+from MasterThesis.src.uncertainty_cfs.data import load_datasets
 from property_procedures import (
     similarity_loss_function,
     validity_loss_function,

@@ -1,4 +1,4 @@
-from property_procedures.tabular_util import get_tabular_dataset
+from uncertainty_cfs.tabular_util import get_dataset
 from epiuc.uncertainty.classification import MLP_Classifier
 from epiuc.uncertainty.wrapper import Ensemble_Classifier
 import numpy as np
@@ -8,17 +8,6 @@ ENSEMBLE_MEMBER_COUNT = 20
 N_EPOCHS = 50
 BATCH_SIZE = 128
 torch._functorch.config.donated_buffer = False
-
-
-def get_dataset(name, severity=-1):
-    dataset = get_tabular_dataset(name, severity=severity)
-    X_train, X_test, y_train, y_test = (
-        dataset["X_train"].astype(np.float32),
-        dataset["X_test"].astype(np.float32),
-        dataset["y_train"],
-        dataset["y_test"],
-    )
-    return X_train, X_test, y_train, y_test
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 from epiuc.uncertainty.classification import MLP_Classifier
 from epiuc.uncertainty.wrapper import Ensemble_Classifier
-from data import load_datasets
+from MasterThesis.src.uncertainty_cfs.data import load_datasets
 
 ENSEMBLE_MEMBER_COUNT = 20
 N_EPOCHS = 50

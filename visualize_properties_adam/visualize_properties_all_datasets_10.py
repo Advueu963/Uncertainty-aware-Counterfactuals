@@ -4,7 +4,7 @@ import torch
 import numpy as np
 from epiuc.uncertainty.classification import MLP_Classifier
 from epiuc.uncertainty.wrapper import Ensemble_Classifier
-from data import (
+from MasterThesis.src.uncertainty_cfs.data import (
     load_l_dataset,
     load_ring_dataset,
     load_bubbles,

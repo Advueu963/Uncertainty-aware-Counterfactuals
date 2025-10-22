@@ -2,8 +2,8 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 from torch.distributed.fsdp.wrap import lambda_auto_wrap_policy
-
-from epiuc.uncertainty.classification import LeNet_MNIST
+import os
+from epiuc.uncertainty.classification import LeNet_MNIST, MLP_Classifier
 from epiuc.uncertainty.wrapper import Ensemble_Classifier
 from property_procedures.utils import ensemble_probs, total_uncertainty_ensemble, epistemic_uncertainty_ensemble, \
     aleatoric_uncertainty_ensemble
@@ -11,7 +11,7 @@ from property_procedures.utils import ensemble_probs, total_uncertainty_ensemble
 from config import DATALOADER_CONFIGS, BACKEND
 
 
-def load_mnist(vali_size=0.1, generator=None, loading_configs=DATALOADER_CONFIGS, ROOT_PATH="data"):
+def load_mnist(vali_size=0.1, generator=None, loading_configs=DATALOADER_CONFIGS, ROOT_PATH=os.environ.get("SCRATCH_DSS")):
     """
     Load MNIST dataset.
     See `load_image_data` for more details on the arguments.
@@ -19,7 +19,7 @@ def load_mnist(vali_size=0.1, generator=None, loading_configs=DATALOADER_CONFIGS
     """
 
     transform = transforms.Compose(
-        [transforms.ToTensor(), transforms.Normalize(mean=[0.1307], std=[0.3081])]
+        [transforms.ToTensor(), transforms.Normalize(mean=[0.1307], std=[0.3081]), transforms.Lambda(lambda x: x.view(-1))]
     )
 
     trainset = torchvision.datasets.MNIST(
@@ -63,14 +63,17 @@ def load_mnist(vali_size=0.1, generator=None, loading_configs=DATALOADER_CONFIGS
 
 trainloader, testloader = load_mnist()
 
+
+
 lenet_model = LeNet_MNIST(drop_prob=0.5, in_channels=1, image_width=28, image_heigth=28)
+model = MLP_Classifier(input_shape=28*28, n_classes=10, num_neurons=100, dropout_prob=0,batch_norm=True,n_layers=2, random_state=42)
 ensemble_lenet = Ensemble_Classifier(
-    base_model=lenet_model,
-    n_models=20,
+    base_model=model,
+    n_models=50,
     random_state=42
 )
 ensemble_lenet.fit(
     trainloader,
-    X_val=testloader,
     n_epochs=50,
-    dataset_name="MNIST")
+    dataset_name="MNIST"
+)

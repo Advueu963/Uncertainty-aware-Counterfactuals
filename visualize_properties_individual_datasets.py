@@ -5,7 +5,7 @@ import numpy as np
 from carla.recourse_methods import GrowingSpheres, Clue, Dice, Face
 from epiuc.uncertainty.classification import MLP_Classifier
 from epiuc.uncertainty.wrapper import Ensemble_Classifier
-from data import (
+from MasterThesis.src.uncertainty_cfs.data import (
     load_l_dataset,
     load_ring_dataset,
     load_bubbles,
@@ -14,7 +14,7 @@ from data import (
     load_two_moon,
     load_infinity_dataset,
 )
-from property_procedures import (
+from uncertainty_cfs.property_procedures import (
     validity_loss_function,
     connected_loss_function,
     robust_loss_function,
@@ -35,7 +35,7 @@ from property_procedures.utils import (
     total_uncertainty_ensemble,
     sample_delta_ball,
 )
-from synthetic_to_carla import Synthetic_CARLA, MyOwnModel
+from MasterThesis.src.uncertainty_cfs.synthetic_to_carla import Synthetic_CARLA, MyOwnModel
 
 DESIRED_VALIDITY = 0.999
 DELTA = 0.2
