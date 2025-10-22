@@ -52,6 +52,8 @@ if __name__ == "__main__":
     # Rename the methods accordingly
     data = data[data["method"].isin(CONSIDERED_METHODS)]
     data["method"] = data["method"].replace(RENAME_DICT)
+    
+    data.sort_values(by=["dataset","method"], inplace=True)
     # Rename CONSIDERED METHODS accordingly
     CONSIDERED_METHODS = [RENAME_DICT.get(m, m) for m in CONSIDERED_METHODS]
     

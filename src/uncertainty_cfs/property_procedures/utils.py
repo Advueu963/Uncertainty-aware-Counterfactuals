@@ -1024,7 +1024,7 @@ def visualze_path_with_underlying(
 
     # sample_ball
     delta_ball = sample_delta_ball(tensor_points.detach().numpy(), delta, n_points)
-    probs_ensemble_delta_ball = (
+    probs_ensemble_delta_ball = predict_probs(
         model, delta_ball.view(-1, *tensor_points.shape[1:])
     )
     eu_delta_ball = epistemic_uncertainty_entropy(probs_ensemble_delta_ball).view(

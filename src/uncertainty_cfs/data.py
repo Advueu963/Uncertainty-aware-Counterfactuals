@@ -433,7 +433,7 @@ def load_datasets(dataset_name, noisy=False, **kwargs):
         X, y_labels, y_probs = load_two_moon(**kwargs)
     elif dataset_name == "infinity":
         X, y_labels, y_probs = load_infinity_dataset(**kwargs)
-    elif dataset_name == "ring_dataset":
+    elif dataset_name == "ring":
         X, y_labels, y_probs = load_ring_dataset(**kwargs)
     elif dataset_name == "l_dataset":
         X, y_labels, y_probs = load_l_dataset(**kwargs)
@@ -441,8 +441,6 @@ def load_datasets(dataset_name, noisy=False, **kwargs):
         X, y_labels, y_probs = load_bubbles(**kwargs)
     elif dataset_name == "bubbles_noisy":
         X, y_labels, y_probs = load_bubbles_noisy(**kwargs)
-    elif dataset_name == "infinity_dataset":
-        X, y_labels, y_probs = load_infinity_dataset(**kwargs)
     else:
         raise ValueError(f"Unknown dataset name: {dataset_name}")
 
