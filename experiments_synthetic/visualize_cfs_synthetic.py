@@ -57,7 +57,7 @@ PATIENCE = MAX_STEPS
 DESIRED_CLASS = 1
 ENSEMBLE_MEMBER_COUNT = 20
 N_EPOCHS = 50
-SAVE_FOLDER = os.path.join(os.environ.get("SCRATCH_DSS"),"property_tabular")
+SAVE_FOLDER = "synthetic_results_visualizations"
 PROPERTY_LOADERS = [
     (
         "validity",
@@ -118,7 +118,7 @@ if __name__ == "__main__":
             ),
         ),
         (
-            "ring_dataset",
+            "ring",
             load_ring_dataset,
             {"n_samples": 1000, "inner_radius": 1.0, "outer_radius": 2.0, "noise": 0.1},
             torch.tensor(
@@ -142,7 +142,7 @@ if __name__ == "__main__":
             ),
         ),
         (
-            "infinity_dataset",
+            "infinity",
             load_infinity_dataset,
             {"n_samples": 1000},
             torch.tensor(
@@ -151,9 +151,10 @@ if __name__ == "__main__":
         ),
     ]
     MODEL_NAME = args.model_name
-
+    if not os.path.exists(SAVE_FOLDER):
+        os.makedirs(SAVE_FOLDER)
     for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LOADERS):
-        fig, axes = plt.subplots(nrows=1, ncols=len(PROPERTY_LOADERS) + 4, figsize=(80, 5))
+        fig, axes = plt.subplots(nrows=1, ncols=len(PROPERTY_LOADERS), figsize=(80, 5))
         print(f"Training ensemble on {dataset_name}...")
         points, y_labels, y_probs = loader(**kwargs)
 
