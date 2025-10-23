@@ -43,14 +43,14 @@ parser.add_argument(
 parser.add_argument(
     "--batch_size",
     type=int,
-    default=256,
+    default=128,
     help="Batch size (default: 128)",
 )
 parser.add_argument(
     "--n_epochs",
     type=int,
-    default=50,
-    help="Number of epochs (default: 50)",
+    default=100,
+    help="Number of epochs (default: 100)",
 )
 parser.add_argument(
     "--n_models",
@@ -100,13 +100,12 @@ if __name__ == "__main__":
         N_MC_SAMPLES = args.n_mc_samples
         BATCH_SIZE = args.batch_size
         N_EPOCHS = args.n_epochs
-        DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        DEVICE = torch.device("cpu") #torch.device("cuda" if torch.cuda.is_available() else "cpu")
         ### Load Data ###
         
         X,y,_ = load_datasets(dataset_name)
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42, stratify=y
-        )
+        X_train, X_test, y_train, y_test = X,X,y,y
+        
         X_train,X_cal,y_train,y_cal = train_test_split(X_train,y_train,test_size=0.1,random_state=42,stratify=y_train)
 
         X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
@@ -214,8 +213,8 @@ if __name__ == "__main__":
                     if MODEL_NAME == "ensemble" and args.ensemble_type == "dare":
                         # Gradually increase the regularization strength over the first 10 epochs
                         #after_10_epoch = epoch > 10
-                        lbmda = min(1.0, epoch / 10)
-                        loss -= lbmda*regularizer(net)
+                        #lbmda = min(1.0, epoch / 10)
+                        loss -= 0.01 * regularizer(net)
                         
                     if MODEL_NAME == "ensemble" and args.ensemble_type == "adversarial":
                         # Compute gradients w.r.t. inputs for FGSM
@@ -293,7 +292,7 @@ if __name__ == "__main__":
 
         ### Calibrate Model ###
         temperature = Temperature(model)
-        temperature.to(DEVICE)
+        # temperature.to(DEVICE)
         temperature.fit(calloader, learning_rate=0.01, max_iter=100)
         print(f"Optimal temperature: {temperature.temperature.item():.4f}")
         # Update model to be the temperature scaled model
