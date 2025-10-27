@@ -1,16 +1,14 @@
-# MasterThesis
+# Towards More Principled Foundations of XAI Through Uncertainty-aware Counterfactuals
 
-This repository contains the entire code for the MasterThesis "Uncertainty as a Unifying Framework for Counterfactual Explanations" supervised by Kascper Sokol, Maximilian Muschalik and Eyke Hüllermeier.
+This repository contains the code for the experiments of the paper: "Towards More Principled Foundations of XAI Through Uncertainty-aware Counterfactuals".
 
-The virtual enviroment is created through `uv?.
-Please install `uv` and then use `uv sync` to obtain the virtual enviroment.
+To get started, please run `uv sync` to create the virtual enviroment.
+Additionally one needs to run `uv pip install probly` to get the newest version of the Uncertainty package `probly`.
 
-`property_procedures` is the main folder containing all the new proposed optimisation functions for the different properties.
-
-`epiuc` and `carla` are other packages regarding uncertainty aware models and baseline methods for counterfactual generation, respectively.
-
-`visualize_properties_sgd` and `visualize_properties_adam` contain experimental files for obtaining the large images shown in the thesis.
-
-The files `<...>_properties_all_datasets.py` are the experiments to obtain the metric tables as `.csv` file.
-
-The weights of the ensemble can be found and used in `models/`
+The repository is structured as follows:
+- All the proposed optimization procedures can be found in *src/uncertainty_cfs/property_procedures*
+- The best sweep results can be found in *best_sweep_results_[method_identifier]_.csv*
+- The tabular experiments can be found in *experiments_tabular/*, the datasets in *tabular/*.
+- Saved model weights are contained in *models/*
+- Scripts for training can be found in *training/*.
+- All evaluated hyperparameters are stated in *sweep_configurations.txt*, *sweep_configurations_clue.txt* and *sweep_configurations_face.txt*.
