@@ -1,0 +1,3 @@
+[submodule "CARLA"]
+	path = CARLA
+	url = git@github.com:Advueu963/CARLA.git
