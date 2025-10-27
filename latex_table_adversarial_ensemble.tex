@@ -1,0 +1,140 @@
+% Medal colors
+\definecolor{gold}{RGB}{255,215,0}
+\definecolor{silver}{RGB}{192,192,192}
+\definecolor{bronze}{RGB}{205,127,50}
+\begin{table}[ht]
+\centering
+\begin{tabular}{l l c c c c c c}
+\hline
+Dataset & Method & instability & invalidity & dissimilarity & dissparsity & implausability & discriminative_power \\ 
+\hline
+\multirow{13}{*}{bank} & validity & \textcolor{bronze}{6.282} & 0.070 & 70.664 & \textcolor{silver}{0.900} & 65.145 & 0.498 \\ 
+ & connected & 6.315 & 0.070 & 70.153 & \textcolor{silver}{0.900} & 65.160 & 0.508 \\ 
+ & robust & \textcolor{silver}{5.050} & \textcolor{silver}{0.059} & 76.765 & \textcolor{silver}{0.900} & 70.508 & 0.545 \\ 
+ & feasability & 8.248 & \textcolor{bronze}{0.066} & \textcolor{silver}{59.446} & \textcolor{silver}{0.900} & 52.856 & 0.558 \\ 
+ & discriminative & 6.843 & \textcolor{gold}{0.045} & 78.460 & \textcolor{silver}{0.900} & 71.168 & 0.490 \\ 
+ & plausable & 7.909 & 0.066 & \textcolor{gold}{57.493} & \textcolor{silver}{0.900} & \textcolor{bronze}{51.699} & 0.492 \\ 
+ & similarity & 137.695 & 0.282 & 375.423 & \textcolor{silver}{0.900} & 253.736 & \textcolor{gold}{0.717} \\ 
+ & uncertainty & 12.296 & 0.079 & \textcolor{bronze}{65.269} & \textcolor{silver}{0.900} & 59.877 & 0.533 \\ 
+ & uncertainty+distance & nan & nan & nan & nan & nan & nan \\ 
+ & CLUE & nan & nan & nan & nan & nan & nan \\ 
+ & FACE & 62.557 & 0.394 & 143.886 & \textcolor{bronze}{0.901} & \textcolor{gold}{0.000} & 0.508 \\ 
+ & DICE & 762.211 & 0.297 & 2648.397 & \textcolor{gold}{0.749} & 315.006 & \textcolor{silver}{0.588} \\ 
+ & GS & \textcolor{gold}{3.999} & 0.488 & 264.049 & 0.998 & \textcolor{silver}{13.091} & \textcolor{bronze}{0.571} \\ 
+\hline
+\multirow{13}{*}{boston_housing} & validity & 3.239 & 0.023 & 32.976 & \textcolor{bronze}{1.000} & 29.029 & \textcolor{silver}{0.799} \\ 
+ & connected & 3.239 & 0.023 & 32.976 & \textcolor{bronze}{1.000} & 29.029 & \textcolor{silver}{0.799} \\ 
+ & robust & 2.467 & \textcolor{silver}{0.020} & 35.580 & \textcolor{bronze}{1.000} & 31.567 & 0.797 \\ 
+ & feasability & 3.241 & 0.023 & 32.979 & \textcolor{bronze}{1.000} & 29.034 & \textcolor{bronze}{0.798} \\ 
+ & discriminative & 3.315 & \textcolor{gold}{0.017} & 35.061 & \textcolor{bronze}{1.000} & 31.045 & 0.798 \\ 
+ & plausable & 3.240 & 0.023 & 32.979 & \textcolor{bronze}{1.000} & 29.034 & \textcolor{silver}{0.799} \\ 
+ & similarity & 87.831 & 0.129 & 470.227 & \textcolor{bronze}{1.000} & 450.304 & 0.763 \\ 
+ & uncertainty & 2.725 & \textcolor{bronze}{0.022} & 33.794 & \textcolor{bronze}{1.000} & 29.691 & 0.798 \\ 
+ & uncertainty+distance & \textcolor{bronze}{2.281} & 0.367 & \textcolor{bronze}{9.142} & \textcolor{bronze}{1.000} & \textcolor{bronze}{5.339} & \textcolor{gold}{0.832} \\ 
+ & CLUE & nan & nan & nan & nan & nan & nan \\ 
+ & FACE & \textcolor{gold}{0.557} & 0.365 & \textcolor{gold}{4.577} & \textcolor{gold}{0.869} & \textcolor{gold}{0.000} & 0.794 \\ 
+ & DICE & \textcolor{silver}{1.074} & 0.381 & \textcolor{silver}{8.652} & \textcolor{silver}{0.888} & \textcolor{silver}{1.798} & 0.795 \\ 
+ & GS & nan & 0.490 & 12.716 & \textcolor{bronze}{1.000} & 6.773 & 0.751 \\ 
+\hline
+\multirow{13}{*}{breast_cancer} & validity & 106.325 & 0.054 & 669.474 & \textcolor{silver}{1.000} & 668.185 & 0.791 \\ 
+ & connected & 106.329 & 0.054 & 669.483 & \textcolor{silver}{1.000} & 668.194 & 0.791 \\ 
+ & robust & 123.946 & \textcolor{silver}{0.049} & 645.957 & \textcolor{silver}{1.000} & 644.602 & \textcolor{bronze}{0.791} \\ 
+ & feasability & 106.818 & 0.054 & 670.694 & \textcolor{silver}{1.000} & 669.415 & 0.791 \\ 
+ & discriminative & 109.332 & \textcolor{gold}{0.048} & 687.065 & \textcolor{silver}{1.000} & 685.785 & \textcolor{silver}{0.791} \\ 
+ & plausable & 105.778 & 0.054 & 668.657 & \textcolor{silver}{1.000} & 667.368 & 0.791 \\ 
+ & similarity & 8341.913 & 0.177 & 23849.760 & \textcolor{silver}{1.000} & 23848.664 & 0.790 \\ 
+ & uncertainty & 127.706 & \textcolor{bronze}{0.052} & 637.917 & \textcolor{silver}{1.000} & 636.526 & 0.791 \\ 
+ & uncertainty+distance & 120.468 & 0.123 & 299.481 & \textcolor{silver}{1.000} & 297.798 & \textcolor{gold}{0.883} \\ 
+ & CLUE & nan & nan & nan & nan & nan & nan \\ 
+ & FACE & \textcolor{silver}{0.801} & 0.357 & \textcolor{gold}{2.336} & \textcolor{gold}{0.999} & \textcolor{gold}{0.000} & 0.790 \\ 
+ & DICE & \textcolor{gold}{0.686} & 0.175 & \textcolor{silver}{2.513} & \textcolor{gold}{0.999} & \textcolor{silver}{0.868} & 0.772 \\ 
+ & GS & \textcolor{bronze}{83.737} & 0.486 & \textcolor{bronze}{229.332} & \textcolor{silver}{1.000} & \textcolor{bronze}{228.162} & 0.647 \\ 
+\hline
+\multirow{13}{*}{churn} & validity & 7.330 & 0.015 & 26.195 & \textcolor{gold}{0.265} & 24.163 & 0.883 \\ 
+ & connected & 7.332 & 0.015 & 26.195 & \textcolor{gold}{0.265} & 24.164 & 0.883 \\ 
+ & robust & 6.943 & \textcolor{silver}{0.011} & 28.389 & \textcolor{gold}{0.265} & 26.362 & \textcolor{silver}{0.884} \\ 
+ & feasability & 7.336 & \textcolor{bronze}{0.015} & 26.235 & \textcolor{gold}{0.265} & 24.206 & 0.883 \\ 
+ & discriminative & 8.124 & \textcolor{gold}{0.007} & 29.819 & \textcolor{gold}{0.265} & 27.799 & \textcolor{gold}{0.884} \\ 
+ & plausable & 7.225 & 0.016 & 26.022 & \textcolor{gold}{0.265} & 23.996 & 0.883 \\ 
+ & similarity & 32.070 & 0.241 & 101.063 & \textcolor{gold}{0.265} & 97.851 & \textcolor{gold}{0.884} \\ 
+ & uncertainty & 10.271 & 0.034 & 27.403 & \textcolor{gold}{0.265} & 25.379 & \textcolor{bronze}{0.883} \\ 
+ & uncertainty+distance & nan & nan & nan & nan & nan & nan \\ 
+ & CLUE & \textcolor{gold}{0.238} & 0.494 & \textcolor{bronze}{10.101} & 1.000 & \textcolor{bronze}{7.685} & \textcolor{gold}{0.884} \\ 
+ & FACE & nan & nan & nan & nan & nan & nan \\ 
+ & DICE & \textcolor{silver}{0.777} & 0.447 & \textcolor{gold}{3.481} & \textcolor{bronze}{0.310} & \textcolor{gold}{1.254} & 0.830 \\ 
+ & GS & \textcolor{bronze}{2.299} & 0.484 & \textcolor{silver}{9.192} & \textcolor{silver}{0.274} & \textcolor{silver}{7.397} & 0.730 \\ 
+\hline
+\multirow{13}{*}{compas} & validity & 3.847 & 0.011 & 23.076 & 0.570 & 11.764 & 0.718 \\ 
+ & connected & 3.847 & 0.011 & 23.076 & 0.570 & 11.764 & 0.718 \\ 
+ & robust & 3.960 & \textcolor{silver}{0.008} & 26.320 & 0.570 & 15.284 & 0.712 \\ 
+ & feasability & \textcolor{bronze}{3.846} & 0.011 & 23.083 & 0.570 & 11.771 & 0.718 \\ 
+ & discriminative & 3.971 & \textcolor{gold}{0.007} & 24.440 & 0.570 & 13.160 & 0.716 \\ 
+ & plausable & 3.846 & \textcolor{bronze}{0.011} & 23.077 & 0.570 & 11.766 & 0.718 \\ 
+ & similarity & 32.512 & 0.161 & 75.892 & 0.571 & 55.169 & 0.695 \\ 
+ & uncertainty & 17.123 & 0.047 & 24.314 & 0.570 & 12.100 & 0.718 \\ 
+ & uncertainty+distance & \textcolor{gold}{2.454} & 0.471 & \textcolor{silver}{22.057} & 0.578 & 1.985 & \textcolor{silver}{0.796} \\ 
+ & CLUE & nan & nan & nan & nan & nan & nan \\ 
+ & FACE & \textcolor{silver}{3.117} & 0.401 & \textcolor{gold}{11.381} & \textcolor{gold}{0.425} & \textcolor{gold}{0.000} & \textcolor{bronze}{0.781} \\ 
+ & DICE & 10.297 & 0.460 & 30.408 & \textcolor{silver}{0.446} & \textcolor{bronze}{1.235} & 0.738 \\ 
+ & GS & nan & 0.644 & \textcolor{bronze}{22.709} & \textcolor{bronze}{0.566} & \textcolor{silver}{1.058} & \textcolor{gold}{0.838} \\ 
+\hline
+\multirow{13}{*}{diabetes} & validity & 2.117 & 0.005 & 5.886 & 0.985 & 3.974 & 0.758 \\ 
+ & connected & 2.117 & 0.005 & 5.880 & 0.985 & 3.974 & 0.758 \\ 
+ & robust & 2.369 & \textcolor{silver}{0.005} & 6.696 & 0.985 & 4.722 & \textcolor{bronze}{0.764} \\ 
+ & feasability & 2.120 & \textcolor{bronze}{0.005} & 5.884 & 0.985 & 3.977 & 0.758 \\ 
+ & discriminative & 2.541 & \textcolor{gold}{0.004} & 7.080 & 0.985 & 5.102 & \textcolor{silver}{0.768} \\ 
+ & plausable & 2.117 & 0.005 & 5.887 & 0.985 & 3.974 & 0.758 \\ 
+ & similarity & 2.760 & 0.143 & 5.951 & 0.985 & 4.093 & 0.757 \\ 
+ & uncertainty & 5.644 & 0.056 & 12.347 & 0.985 & 10.251 & \textcolor{gold}{0.771} \\ 
+ & uncertainty+distance & \textcolor{bronze}{0.840} & 0.382 & 2.776 & 1.000 & \textcolor{silver}{0.218} & 0.745 \\ 
+ & CLUE & nan & nan & nan & nan & nan & nan \\ 
+ & FACE & \textcolor{gold}{0.647} & 0.445 & \textcolor{silver}{2.221} & \textcolor{silver}{0.942} & \textcolor{gold}{0.000} & 0.696 \\ 
+ & DICE & \textcolor{silver}{0.695} & 0.383 & \textcolor{bronze}{2.665} & \textcolor{gold}{0.923} & 0.819 & 0.717 \\ 
+ & GS & nan & 0.497 & \textcolor{gold}{2.149} & \textcolor{bronze}{0.971} & \textcolor{bronze}{0.421} & 0.700 \\ 
+\hline
+\multirow{13}{*}{fico} & validity & 3.615 & 0.033 & 10.922 & \textcolor{bronze}{0.998} & 9.118 & 0.728 \\ 
+ & connected & 3.614 & 0.033 & 10.922 & \textcolor{bronze}{0.998} & 9.118 & 0.728 \\ 
+ & robust & 3.259 & \textcolor{silver}{0.031} & 11.689 & \textcolor{bronze}{0.998} & 9.921 & \textcolor{silver}{0.729} \\ 
+ & feasability & 3.612 & 0.034 & 10.916 & \textcolor{bronze}{0.998} & 9.113 & 0.728 \\ 
+ & discriminative & 3.623 & \textcolor{gold}{0.031} & 10.996 & \textcolor{bronze}{0.998} & 9.192 & 0.729 \\ 
+ & plausable & 3.595 & \textcolor{bronze}{0.033} & 10.929 & \textcolor{bronze}{0.998} & 9.077 & 0.728 \\ 
+ & similarity & 71.490 & 0.218 & 185.424 & 0.998 & 181.113 & \textcolor{bronze}{0.729} \\ 
+ & uncertainty & 3.525 & 0.037 & 11.571 & \textcolor{bronze}{0.998} & 9.821 & 0.728 \\ 
+ & uncertainty+distance & \textcolor{bronze}{1.155} & 0.409 & \textcolor{silver}{3.362} & 0.999 & \textcolor{bronze}{1.193} & 0.728 \\ 
+ & CLUE & nan & nan & nan & nan & nan & nan \\ 
+ & FACE & \textcolor{gold}{0.612} & 0.430 & \textcolor{gold}{2.389} & \textcolor{gold}{0.842} & \textcolor{gold}{0.000} & 0.725 \\ 
+ & DICE & \textcolor{silver}{1.090} & 0.338 & \textcolor{bronze}{3.892} & \textcolor{silver}{0.860} & \textcolor{silver}{1.180} & 0.727 \\ 
+ & GS & nan & 0.492 & 4.295 & 0.999 & 1.928 & \textcolor{gold}{0.739} \\ 
+\hline
+\multirow{13}{*}{home} & validity & nan & 0.207 & 2.903 & \textcolor{silver}{1.000} & \textcolor{bronze}{0.051} & \textcolor{gold}{0.880} \\ 
+ & connected & nan & 0.207 & \textcolor{bronze}{2.903} & \textcolor{silver}{1.000} & \textcolor{silver}{0.051} & \textcolor{gold}{0.880} \\ 
+ & robust & nan & 0.207 & 2.903 & \textcolor{silver}{1.000} & 0.051 & \textcolor{gold}{0.880} \\ 
+ & feasability & nan & 0.207 & 2.903 & \textcolor{silver}{1.000} & 0.051 & \textcolor{gold}{0.880} \\ 
+ & discriminative & nan & \textcolor{silver}{0.207} & 2.903 & \textcolor{silver}{1.000} & 0.051 & \textcolor{gold}{0.880} \\ 
+ & plausable & nan & \textcolor{bronze}{0.207} & 2.903 & \textcolor{silver}{1.000} & 0.051 & \textcolor{gold}{0.880} \\ 
+ & similarity & nan & 0.207 & \textcolor{silver}{2.898} & \textcolor{silver}{1.000} & 0.051 & \textcolor{gold}{0.880} \\ 
+ & uncertainty & nan & 0.207 & 2.903 & \textcolor{silver}{1.000} & 0.051 & \textcolor{gold}{0.880} \\ 
+ & uncertainty+distance & nan & 0.207 & \textcolor{gold}{2.897} & \textcolor{silver}{1.000} & \textcolor{gold}{0.045} & \textcolor{gold}{0.880} \\ 
+ & CLUE & nan & nan & nan & nan & nan & nan \\ 
+ & FACE & nan & nan & nan & nan & nan & nan \\ 
+ & DICE & \textcolor{gold}{1.420} & \textcolor{gold}{0.195} & 4.750 & \textcolor{gold}{0.923} & 2.063 & \textcolor{silver}{0.785} \\ 
+ & GS & nan & nan & nan & nan & nan & nan \\ 
+\hline
+\multirow{13}{*}{titanic} & validity & 19.251 & 0.002 & 70.453 & 0.623 & 65.992 & 0.751 \\ 
+ & connected & 19.265 & 0.002 & 70.498 & 0.623 & 66.040 & 0.751 \\ 
+ & robust & 22.694 & \textcolor{silver}{0.001} & 82.394 & 0.623 & 76.972 & \textcolor{bronze}{0.753} \\ 
+ & feasability & 19.096 & 0.002 & 70.615 & 0.623 & 66.169 & 0.751 \\ 
+ & discriminative & 24.053 & \textcolor{gold}{0.000} & 89.771 & 0.623 & 84.835 & 0.750 \\ 
+ & plausable & 19.272 & \textcolor{bronze}{0.002} & 70.485 & 0.623 & 66.019 & 0.751 \\ 
+ & similarity & 46.916 & 0.019 & 114.165 & 0.623 & 109.747 & 0.750 \\ 
+ & uncertainty & 44.337 & 0.008 & 115.160 & \textcolor{bronze}{0.620} & 111.107 & \textcolor{silver}{0.754} \\ 
+ & uncertainty+distance & \textcolor{bronze}{2.525} & 0.406 & \textcolor{silver}{5.756} & 0.646 & \textcolor{silver}{1.487} & 0.646 \\ 
+ & CLUE & nan & nan & nan & nan & nan & nan \\ 
+ & FACE & \textcolor{gold}{0.634} & 0.479 & \textcolor{gold}{3.370} & \textcolor{silver}{0.588} & \textcolor{gold}{0.000} & 0.732 \\ 
+ & DICE & \textcolor{silver}{1.859} & 0.162 & 10.651 & \textcolor{gold}{0.538} & \textcolor{bronze}{2.352} & \textcolor{gold}{0.766} \\ 
+ & GS & nan & 0.499 & \textcolor{bronze}{6.100} & 0.696 & 3.695 & 0.685 \\ 
+\hline
+\end{tabular}
+\caption{Results by dataset, method, and metrics}
+\label{tab:results}
+\end{table}
