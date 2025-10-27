@@ -100,16 +100,20 @@ if __name__ == "__main__":
         plot_data = plot_data.loc[filter]
 
         plt.subplot(3, 3, i + 1)
-        sns.lineplot(
+        ax = sns.lineplot(
             data=plot_data,
             x="dataset",
             y=metric,
             hue="method",
             hue_order=hue_order,
-            alpha=0.7,
+            alpha=1.0,
             palette=palette,
             marker="o",
+            linestyle="--",
         )
+        # Increase marker size using matplotlib after plotting
+        for line in ax.lines:
+            line.set_markersize(12)
         plt.title(metric)
         plt.xticks(rotation=45)
         plt.legend(loc="upper right", fontsize="small")
