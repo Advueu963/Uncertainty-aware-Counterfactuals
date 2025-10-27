@@ -67,7 +67,7 @@ if __name__ == "__main__":
     # Rename validity to SCHUT
     data["method"] = data["method"].replace(RENAME_DICT)
     CONSIDERED_METHODS = [RENAME_DICT.get(m, m) for m in CONSIDERED_METHODS]
-    print("Loaded Data: ", data)
+    # print("Loaded Data: ", data)
     # Plotting boxplots
 
     sns.set(style="whitegrid")
