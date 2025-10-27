@@ -1,8 +1,6 @@
 import pandas as pd
 import numpy as np
 import torch
-import matplotlib.pyplot as plt
-import seaborn as sns
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -14,8 +12,6 @@ parser.add_argument(
         "deep_ensemble",
         "dare_ensemble",
         "adversarial_ensemble",
-        "bayesian",
-        "dropout",
     ],
     help="Type of model to use",
 )
@@ -65,7 +61,7 @@ if __name__ == "__main__":
     ]
     d1 = pd.read_csv(f"best_sweep_results_{args.model_name}.csv")
     d2 = pd.read_csv(
-        f"best_sweep_results_{args.model_name}_uncertainty_plus_distance_test.csv"
+        f"best_sweep_results_{args.model_name}_uncertainty_plus_distance.csv"
     )
     d3 = pd.read_csv(f"best_sweep_results_{args.model_name}_CLUE.csv")
     d4 = pd.read_csv(f"best_sweep_results_{args.model_name}_FACE.csv")
@@ -91,10 +87,10 @@ if __name__ == "__main__":
         header = ["Dataset", "Method"] + metrics
         latex.append(" & ".join(header) + " \\\\ ")
         latex.append("\\hline")
-        datasets = df['dataset'].unique()
+        datasets = df["dataset"].unique()
         for dataset in datasets:
-            df_dataset = df[df['dataset'] == dataset]
-            methods_in_data = [m for m in methods if m in df_dataset['method'].values]
+            df_dataset = df[df["dataset"] == dataset]
+            methods_in_data = [m for m in methods if m in df_dataset["method"].values]
             n_methods = len(methods_in_data)
             # Find medal values for each metric
             medal_ranks = {}
@@ -111,11 +107,11 @@ if __name__ == "__main__":
                 medal_ranks[metric] = {}
                 for idx, v in enumerate(unique_vals[:3]):
                     if idx == 0:
-                        medal_ranks[metric][v] = 'gold'
+                        medal_ranks[metric][v] = "gold"
                     elif idx == 1:
-                        medal_ranks[metric][v] = 'silver'
+                        medal_ranks[metric][v] = "silver"
                     elif idx == 2:
-                        medal_ranks[metric][v] = 'bronze'
+                        medal_ranks[metric][v] = "bronze"
             for i, method in enumerate(methods_in_data):
                 row = []
                 if i == 0:
@@ -123,9 +119,13 @@ if __name__ == "__main__":
                 else:
                     row.append("")
                 row.append(method)
-                df_row = df_dataset[df_dataset['method'] == method]
+                df_row = df_dataset[df_dataset["method"] == method]
                 for metric in metrics:
-                    value = df_row[metric].values[0] if not df_row.empty and metric in df_row else "-"
+                    value = (
+                        df_row[metric].values[0]
+                        if not df_row.empty and metric in df_row
+                        else "-"
+                    )
                     if value == "-":
                         row.append("-")
                     else:
@@ -133,9 +133,16 @@ if __name__ == "__main__":
                             value_float = float(value)
                         except Exception:
                             value_float = None
-                        formatted = f"{value_float:.3f}" if value_float is not None else str(value)
+                        formatted = (
+                            f"{value_float:.3f}"
+                            if value_float is not None
+                            else str(value)
+                        )
                         color = None
-                        if value_float is not None and value_float in medal_ranks[metric]:
+                        if (
+                            value_float is not None
+                            and value_float in medal_ranks[metric]
+                        ):
                             color = medal_ranks[metric][value_float]
                         if color:
                             formatted = f"\\textcolor{{{color}}}{{{formatted}}}"
@@ -150,5 +157,5 @@ if __name__ == "__main__":
 
     latex_table = generate_latex_table(data, metric_list, CONSIDERED_METHODS)
     with open(f"latex_table_{args.model_name}.tex", "w") as f:
-            f.write(latex_table)
+        f.write(latex_table)
     print("LaTeX table written to latex_table.tex")

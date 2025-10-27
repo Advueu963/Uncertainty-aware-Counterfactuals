@@ -9,7 +9,7 @@ from uncertainty_cfs.tabular_util import (
 )
 import torch
 from uncertainty_cfs.architectures import MLP
-from probly.representation import Ensemble, Dropout, Bayesian
+from probly.representation import Ensemble
 from probly.calibration import Temperature
 from uncertainty_cfs.property_procedures.utils import (
     predict_probs,
@@ -47,8 +47,6 @@ parser.add_argument(
         "deep_ensemble",
         "dare_ensemble",
         "adversarial_ensemble",
-        "bayesian",
-        "dropout",
     ],
     help="Type of model to use",
 )
@@ -291,10 +289,8 @@ def get_dataset_sweep(sweep_kwargs):
             or MODEL_NAME == "adversarial_ensemble"
         ):
             model = Ensemble(architecture, n_members=20)
-        elif MODEL_NAME == "bayesian":
-            model = Bayesian(architecture)
-        elif MODEL_NAME == "dropout":
-            model = Dropout(architecture, p=0.2)
+        else:
+            raise ValueError(f"Model {MODEL_NAME} not recognized!")
         # Evaluate the ensemble model
         model = Temperature(model)
         model.load_state_dict(

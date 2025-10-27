@@ -5,7 +5,7 @@ import argparse
 from uncertainty_cfs.tabular_util import get_categorical_features_all, get_dataset
 import torch
 from uncertainty_cfs.architectures import MLP
-from probly.representation import Ensemble, Dropout, Bayesian
+from probly.representation import Ensemble
 from probly.calibration import Temperature
 from uncertainty_cfs.property_procedures.utils import (
     predict_probs,
@@ -34,8 +34,6 @@ parser.add_argument(
         "deep_ensemble",
         "dare_ensemble",
         "adversarial_ensemble",
-        "bayesian",
-        "dropout",
     ],
     help="Type of model to use",
 )
@@ -272,10 +270,8 @@ def get_dataset_sweep(sweep_kwargs):
             or MODEL_NAME == "adversarial_ensemble"
         ):
             model = Ensemble(architecture, n_members=20)
-        elif MODEL_NAME == "bayesian":
-            model = Bayesian(architecture)
-        elif MODEL_NAME == "dropout":
-            model = Dropout(architecture, p=0.2)
+        else:
+            raise ValueError(f"Model {MODEL_NAME} not recognized!")
         # Evaluate the ensemble model
         model = Temperature(model)
         model.load_state_dict(
@@ -318,30 +314,6 @@ def get_dataset_sweep(sweep_kwargs):
                 "proportion_counterfactuals": metrics["proportion_counterfactuals"],
             }
             metric_results.append(row)
-
-        # for method_name in ["CLUE","DICE","FACE","GS"]:
-        #     carla_data = load_carla_data(dataset_name, method_name)
-        #     if carla_data is None:
-        #         print(f"Dataset: {dataset_name}, Method: {method_name} not found")
-        #         continue
-        #     counter_factual = torch.Tensor(carla_data["counter_factual"])
-        #     counter_factual_closest = torch.Tensor(carla_data["counter_factual_closest"])
-        #     print(f"Dataset: {dataset_name}, Method: {method_name}")
-        #     metrics = get_metrics(X_points, X_points_close, y_points, y_points_close, counter_factual, counter_factual_closest, X_test, y_test, ensemble_model, orginal_X, categorical_features_all)
-
-        #     # Create a row for this method/dataset combination
-        #     row = {
-        #         "dataset": dataset_name,
-        #         "method": method_name,
-        #         "instability": metrics["instability"].mean().item(),
-        #         "invalidity": metrics["invalidity"].mean().item(),
-        #         "dissimilarity": metrics["dissimilarity"].mean().item(),
-        #         "dissparsity": metrics["dissparsity"].mean().item(),
-        #         "implausability": metrics["implausability"].mean().item(),
-        #         "discriminative_power": metrics["discriminative_power"].mean().item(),
-        #         "proportion_counterfactuals": metrics["proportion_counterfactuals"],
-        #     }
-        #     metric_results.append(row)
 
     # Create DataFrame with proper structure
     data = pd.DataFrame(metric_results)
@@ -420,6 +392,6 @@ if __name__ == "__main__":
     print("Best score: ", lowest_score)
     print("Best data: ", best_data)
     best_data.to_csv(
-        f"best_sweep_results_{MODEL_NAME}_uncertainty_plus_distance_test.csv",
+        f"best_sweep_results_{MODEL_NAME}_uncertainty_plus_distance.csv",
         index=False,
     )

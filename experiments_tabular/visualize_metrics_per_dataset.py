@@ -14,8 +14,6 @@ parser.add_argument(
         "deep_ensemble",
         "dare_ensemble",
         "adversarial_ensemble",
-        "bayesian",
-        "dropout",
     ],
     help="Type of model to use",
 )
