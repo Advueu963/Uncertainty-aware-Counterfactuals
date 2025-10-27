@@ -99,7 +99,7 @@ if __name__ == "__main__":
         plt.xticks(rotation=45)
         plt.legend(loc="upper right", fontsize="small")
     plt.tight_layout()
-    plt.savefig(f"metrics_boxplots_{args.model_name}_individual_dataset.png")
+    plt.savefig(f"metrics_boxplots_{args.model_name}_individual_dataset.pdf", bbox_inches='tight', pad_inches=0, dpi=300)
     
     # Create Latex table
     table_data = []

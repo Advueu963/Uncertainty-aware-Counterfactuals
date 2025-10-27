@@ -13,10 +13,6 @@ from uncertainty_cfs.tabular_util import get_dataset
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--model_name", type=str, default="deep_ensemble", choices=["deep_ensemble","dare_ensemble","adversarial_ensemble", "bayesian", "dropout"], help="Type of model to use")
-    args = parser.parse_args()
-
     DATA_FILES = [
         "bank",
         "churn",
@@ -33,6 +29,11 @@ if __name__ == "__main__":
         X_train, X_test, y_train, y_test = get_dataset(dataset_name)
         X = np.concatenate([X_train, X_test], axis=0)
         y = np.concatenate([y_train, y_test], axis=0)
+        print(f"Visualizing dataset: {dataset_name} with shape {X.shape}")
+        if X.shape[1] > 50:
+            from sklearn.decomposition import PCA
+            pca = PCA(n_components=X.shape[1]//4, random_state=42)
+            X = pca.fit_transform(X)
         tsne = TSNE(n_components=2, random_state=42)
         X_embedded = tsne.fit_transform(X)
         df = pd.DataFrame()
