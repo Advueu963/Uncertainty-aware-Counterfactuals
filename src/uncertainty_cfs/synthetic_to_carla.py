@@ -124,15 +124,29 @@ class Synthetic_CARLA(Data):
 
 class Tabular_CARLA(Data):
     def __init__(self, dataset_name, **kwargs):
-        data = get_tabular_dataset(dataset_name, return_dataframe=True, random_state=42, **kwargs)
+        data = get_tabular_dataset(
+            dataset_name, return_dataframe=True, random_state=42, **kwargs
+        )
         self.features = data["feature_names"]
-        self._categorical_features_changeable = list(np.array(data["feature_names"])[data["categorical_features"]]) # CARLA enforces list format. Used numpy array for slice indexing
-        self._continuous_features_changeable = list(np.array(data["feature_names"])[data["continuous_features"]]) # CARLA enforces list format. Used numpy array for slice indexing
+        self._categorical_features_changeable = list(
+            np.array(data["feature_names"])[data["categorical_features"]]
+        )  # CARLA enforces list format. Used numpy array for slice indexing
+        self._continuous_features_changeable = list(
+            np.array(data["feature_names"])[data["continuous_features"]]
+        )  # CARLA enforces list format. Used numpy array for slice indexing
         self.immutable_features = [
-            f for f in self.features if f not in self._categorical_features_changeable + self._continuous_features_changeable
+            f
+            for f in self.features
+            if f
+            not in self._categorical_features_changeable
+            + self._continuous_features_changeable
         ]
-        self.categorical_features = list(np.array(data["feature_names"])[data["categorical_features_all"]]) # CARLA enforces list format. Used numpy array for slice indexing
-        self.continuous_features = list(np.array(data["feature_names"])[data["continuous_features_all"]]) # CARLA enforces list format. Used numpy array for slice indexing        
+        self.categorical_features = list(
+            np.array(data["feature_names"])[data["categorical_features_all"]]
+        )  # CARLA enforces list format. Used numpy array for slice indexing
+        self.continuous_features = list(
+            np.array(data["feature_names"])[data["continuous_features_all"]]
+        )  # CARLA enforces list format. Used numpy array for slice indexing
         self._dataset = data["df"].astype(np.float32)
         self._dataset_train = self._dataset.iloc[data["idx_train"]]
         self._dataset_test = self._dataset.iloc[data["idx_test"]]
@@ -207,7 +221,7 @@ class Tabular_CARLA(Data):
             original_df[self.target] = df[self.target]
         # Return the original DataFrame
         return original_df
-        
+
     # List of all categorical features
     @property
     def categorical(self):
@@ -226,18 +240,20 @@ class Tabular_CARLA(Data):
 
 
 class Tabular_Carla_Model(MLModel):
-    def __init__(self,
-                 data: Tabular_CARLA,
-                 model: nn.Module,
-                    output_shape: int,
-                    input_order: list = None
-                 ):
+    def __init__(
+        self,
+        data: Tabular_CARLA,
+        model: nn.Module,
+        output_shape: int,
+        input_order: list = None,
+    ):
         super().__init__(data)
-        
+
         self.output_shape = output_shape
         self.input_order = input_order if input_order is not None else data.features
         self._mymodel = model
         self.input_order = input_order
+
     # List of the feature order the ml model was trained on
     @property
     def feature_input_order(self):
@@ -279,6 +295,7 @@ class Tabular_Carla_Model(MLModel):
         y_prob = self._mymodel.predict_proba(x)
         return y_prob.detach().numpy()
 
+
 class MyOwnModel(MLModel):
     def __init__(
         self,
@@ -290,6 +307,7 @@ class MyOwnModel(MLModel):
         # The constructor can be used to load or build an
         self.noisy = noisy
         self._mymodel = model
+
     # List of the feature order the ml model was trained on
     @property
     def feature_input_order(self):

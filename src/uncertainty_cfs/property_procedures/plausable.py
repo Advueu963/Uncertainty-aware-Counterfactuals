@@ -45,11 +45,10 @@ def plausable_loss_function(
 
     target_probs = probs[:, desired_class]
 
-
     loss = p_weight * target_probs.log2()
     loss = loss - torch.where(target_probs > 0.5, lambda_1 * eu.exp(), 0)
     loss = loss.mul(-1)
 
     loss.sum().backward()
-    
+
     return loss, counter_factual.grad

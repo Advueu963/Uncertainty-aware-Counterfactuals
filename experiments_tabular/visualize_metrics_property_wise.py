@@ -1,4 +1,3 @@
-    
 import pandas as pd
 import numpy as np
 import torch
@@ -7,7 +6,19 @@ import seaborn as sns
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--model_name", type=str, default="deep_ensemble", choices=["deep_ensemble","dare_ensemble","adversarial_ensemble", "bayesian", "dropout"], help="Type of model to use")
+parser.add_argument(
+    "--model_name",
+    type=str,
+    default="deep_ensemble",
+    choices=[
+        "deep_ensemble",
+        "dare_ensemble",
+        "adversarial_ensemble",
+        "bayesian",
+        "dropout",
+    ],
+    help="Type of model to use",
+)
 args = parser.parse_args()
 
 if __name__ == "__main__":
@@ -48,10 +59,12 @@ if __name__ == "__main__":
         "discriminative_power",
     ]
     d1 = pd.read_csv(f"best_sweep_results_{args.model_name}.csv")
-    d2 = pd.read_csv(f"best_sweep_results_{args.model_name}_uncertainty_plus_distance_test.csv")
+    d2 = pd.read_csv(
+        f"best_sweep_results_{args.model_name}_uncertainty_plus_distance_test.csv"
+    )
     d3 = pd.read_csv(f"best_sweep_results_{args.model_name}_CLUE.csv")
     d4 = pd.read_csv(f"best_sweep_results_{args.model_name}_FACE.csv")
-    data = pd.concat([d1,d2,d3,d4], ignore_index=True)
+    data = pd.concat([d1, d2, d3, d4], ignore_index=True)
     # Rename the methods accordingly
     data = data[data["method"].isin(CONSIDERED_METHODS)]
     data["method"] = data["method"].replace(RENAME_DICT)
@@ -76,24 +89,39 @@ if __name__ == "__main__":
     }
 
     for i, metric in enumerate(metric_list):
-        plot_data = data[["dataset","method",metric]]
+        plot_data = data[["dataset", "method", metric]]
         print("Plotting metric", metric, "with data", plot_data)
-        
+
         # Remove outliers for better visualization
         Q1 = plot_data[metric].quantile(0.25)
         Q3 = plot_data[metric].quantile(0.75)
         IQR = Q3 - Q1
-        filter = (plot_data[metric] >= Q1 - 1.5 * IQR) & (plot_data[metric] <= Q3 + 1.5 * IQR)
+        filter = (plot_data[metric] >= Q1 - 1.5 * IQR) & (
+            plot_data[metric] <= Q3 + 1.5 * IQR
+        )
         plot_data = plot_data.loc[filter]
 
         plt.subplot(3, 3, i + 1)
-        sns.boxplot(x='method', y=metric, hue="method", data=plot_data, order=hue_order, hue_order=hue_order, palette=palette)
+        sns.boxplot(
+            x="method",
+            y=metric,
+            hue="method",
+            data=plot_data,
+            order=hue_order,
+            hue_order=hue_order,
+            palette=palette,
+        )
         plt.title(metric)
         plt.xticks(rotation=45)
-        plt.legend(loc='upper right', fontsize='small')
+        plt.legend(loc="upper right", fontsize="small")
     plt.tight_layout()
-    plt.savefig(f"metrics_boxplots_{args.model_name}_property_wise.pdf", bbox_inches='tight', pad_inches=0, dpi=300)
-    
+    plt.savefig(
+        f"metrics_boxplots_{args.model_name}_property_wise.pdf",
+        bbox_inches="tight",
+        pad_inches=0,
+        dpi=300,
+    )
+
     # Create Latex table
     table_data = []
     for method in CONSIDERED_METHODS:

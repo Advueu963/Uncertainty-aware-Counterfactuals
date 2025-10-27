@@ -1,5 +1,4 @@
 import os
-import time
 import argparse
 import numpy as np
 import torch
@@ -36,11 +35,23 @@ from uncertainty_cfs.data import (
 from uncertainty_cfs.property_procedures.utils import (
     visualize_decision_boundry,
     visualize_au_eu_tu,
-    visualze_property
+    visualze_property,
 )
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--model_name", type=str, default="deep_ensemble", choices=["deep_ensemble","dare_ensemble","adversarial_ensemble", "bayesian", "dropout"], help="Type of model to use")
+parser.add_argument(
+    "--model_name",
+    type=str,
+    default="deep_ensemble",
+    choices=[
+        "deep_ensemble",
+        "dare_ensemble",
+        "adversarial_ensemble",
+        "bayesian",
+        "dropout",
+    ],
+    help="Type of model to use",
+)
 args = parser.parse_args()
 
 
@@ -91,7 +102,6 @@ PROPERTY_LOADERS = [
 ]
 
 if __name__ == "__main__":
-    
     DATASET_LOADERS = [
         (
             "bubbles",
@@ -130,7 +140,9 @@ if __name__ == "__main__":
             load_bubbles_noisy,
             {"n_samples": 1000},
             torch.tensor(
-                np.array([2.5, 2.5]).reshape(-1, 2), dtype=torch.float, requires_grad=True
+                np.array([2.5, 2.5]).reshape(-1, 2),
+                dtype=torch.float,
+                requires_grad=True,
             ),
         ),
         (
@@ -153,20 +165,25 @@ if __name__ == "__main__":
     MODEL_NAME = args.model_name
     if not os.path.exists(SAVE_FOLDER):
         os.makedirs(SAVE_FOLDER)
-    for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(DATASET_LOADERS):
+    for i, (dataset_name, loader, kwargs, point_of_interest) in enumerate(
+        DATASET_LOADERS
+    ):
         fig, axes = plt.subplots(nrows=1, ncols=len(PROPERTY_LOADERS), figsize=(80, 5))
         print(f"Training ensemble on {dataset_name}...")
         points, y_labels, y_probs = loader(**kwargs)
 
-        
         architecture = MLP(
-                input_dim=points.shape[1],
-                output_dim=len(np.unique(y_labels)),
-                hidden_dims=[64, 64],
-                batch_norm=False,
+            input_dim=points.shape[1],
+            output_dim=len(np.unique(y_labels)),
+            hidden_dims=[64, 64],
+            batch_norm=False,
         )
         ### Setup Model ###
-        if MODEL_NAME == "deep_ensemble" or MODEL_NAME == "dare_ensemble" or MODEL_NAME == "adversarial_ensemble":
+        if (
+            MODEL_NAME == "deep_ensemble"
+            or MODEL_NAME == "dare_ensemble"
+            or MODEL_NAME == "adversarial_ensemble"
+        ):
             model = Ensemble(architecture, n_members=20)
         elif MODEL_NAME == "bayesian":
             model = Bayesian(architecture)
@@ -175,7 +192,7 @@ if __name__ == "__main__":
         # Evaluate the ensemble model
         model = Temperature(model)
         model.load_state_dict(
-                torch.load(f"models/model={MODEL_NAME}_dataset={dataset_name}.pth")
+            torch.load(f"models/model={MODEL_NAME}_dataset={dataset_name}.pth")
         )
         model.compile()
         model.eval()
@@ -184,24 +201,26 @@ if __name__ == "__main__":
             probs = predict_probs(model, torch.Tensor(points))
             y_pred = probs.mean(dim=1).argmax(dim=1)
             accuracy = (y_pred == y_labels).float().mean().item()
-            print(f"Model: {MODEL_NAME}, Dataset: {dataset_name}, Accuracy: {accuracy:.4f}")
-        
+            print(
+                f"Model: {MODEL_NAME}, Dataset: {dataset_name}, Accuracy: {accuracy:.4f}"
+            )
 
         # Print some results
         print(f"Dataset: {dataset_name}")
         print(f"Points shape: {points.shape}")
         print(f"Labels shape: {y_labels.shape}")
         print(f"Probabilities shape: {probs.shape}")
-        print(
-            f"Accuracy: {((y_pred == y_labels).sum() / len(y_labels)).item():.4f}"
-        )
+        print(f"Accuracy: {((y_pred == y_labels).sum() / len(y_labels)).item():.4f}")
         print("-" * 40)
 
         for j, (property_name, property_function) in enumerate(PROPERTY_LOADERS):
             print(f"Evaluating property: {property_name} on dataset: {dataset_name}")
 
             # Run the property procedure
-            counter_factual, counter_factual_steps = counter_factual_optimization_routine(
+            (
+                counter_factual,
+                counter_factual_steps,
+            ) = counter_factual_optimization_routine(
                 point_to_explain=point_of_interest,
                 model=model,
                 probability_function=predict_probs,
@@ -238,9 +257,10 @@ if __name__ == "__main__":
                 n_points=N_POINTS,
             )
 
-
         plt.tight_layout()
-        plt.savefig(f"{SAVE_FOLDER}/{dataset_name}_{MODEL_NAME}_counterfactuals.png", dpi=200)
+        plt.savefig(
+            f"{SAVE_FOLDER}/{dataset_name}_{MODEL_NAME}_counterfactuals.png", dpi=200
+        )
 
         fig, axes = plt.subplots(nrows=1, ncols=4, figsize=(20, 5))
 
@@ -256,5 +276,7 @@ if __name__ == "__main__":
             dataset_name,
             probability_function=predict_probs,
         )
-        plt.savefig(f"{SAVE_FOLDER}/{dataset_name}_{MODEL_NAME}_uncertainty.png", dpi=200)
+        plt.savefig(
+            f"{SAVE_FOLDER}/{dataset_name}_{MODEL_NAME}_uncertainty.png", dpi=200
+        )
         # plt.show()

@@ -263,8 +263,6 @@ def get_tabular_dataset(
 
     df, class_name = get_dataset_fn(filename)
 
-    
-
     df = remove_missing_values(df)
     features = [c for c in df.columns if c not in [class_name]]
     continuous_features_names = list(df[features]._get_numeric_data().columns)
@@ -276,8 +274,6 @@ def get_tabular_dataset(
     n_cont_cols = len(continuous_features_names)
     n_cate_cols = n_cols - n_cont_cols
     n_classes = len(df[class_name].unique())
-    
-
 
     if encode == "onehot":
         df, feature_names, class_values = one_hot_encoding(df, class_name)
@@ -330,7 +326,7 @@ def get_tabular_dataset(
         dfo = df.copy()
     else:
         dfo = None
-    
+
     X = df[feature_names].values
     y = df[class_name].values
     indices = np.arange(len(X))
@@ -360,6 +356,7 @@ def get_tabular_dataset(
 
     if encode in ["none", None]:
         import warnings
+
         warnings.warn("Using None Encoder causes issues with returning the dataframe.")
         encoder = OrdinalEncoder()
         encoder_y = LabelEncoder()
@@ -935,7 +932,6 @@ def get_dict_record(
     return x_dict
 
 
-
 def get_dataset(name, severity=-1):
     dataset = get_tabular_dataset(name, severity=severity, random_state=42)
     X_train, X_test, y_train, y_test = (
@@ -946,17 +942,21 @@ def get_dataset(name, severity=-1):
     )
     return X_train, X_test, y_train, y_test
 
+
 def get_categorical_feature_lists(name, severity=-1):
     dataset = get_tabular_dataset(name, severity=severity, random_state=42)
     return dataset["categorical_features_lists"]
+
 
 def get_categorical_features_all(name, severity=-1):
     dataset = get_tabular_dataset(name, severity=severity, random_state=42)
     return dataset["categorical_features_all"]
 
+
 def get_numerical_feature_idx(name, severity=-1):
     dataset = get_tabular_dataset(name, severity=severity, random_state=42)
     return dataset["continuous_features"]
+
 
 def get_immutable_feature_idx(name, severity=-1):
     dataset = get_tabular_dataset(name, severity=severity, random_state=42)

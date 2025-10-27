@@ -59,6 +59,7 @@ args = parser.parse_args()
 
 torch._functorch.config.donated_buffer = False
 
+
 class RegularizerDare(nn.Module):
     def __init__(self, lambda_reg=0.01):
         super(RegularizerDare, self).__init__()
@@ -69,7 +70,7 @@ class RegularizerDare(nn.Module):
         for param in model.parameters():
             total_loss += param.square().log2().sum()
         return total_loss * self.lambda_reg
-    
+
 
 if __name__ == "__main__":
     data_files = [
@@ -95,7 +96,9 @@ if __name__ == "__main__":
         DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         ### Load Data ###
         X_train, X_test, y_train, y_test = get_dataset(dataset_name)
-        X_train,X_cal,y_train,y_cal = train_test_split(X_train,y_train,test_size=0.1,random_state=42,stratify=y_train)
+        X_train, X_cal, y_train, y_cal = train_test_split(
+            X_train, y_train, test_size=0.1, random_state=42, stratify=y_train
+        )
 
         X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
         X_test_tensor = torch.tensor(X_test, dtype=torch.float32)
@@ -103,7 +106,7 @@ if __name__ == "__main__":
         y_train_tensor = torch.tensor(y_train, dtype=torch.long)
         y_cal_tensor = torch.tensor(y_cal, dtype=torch.long)
         y_test_tensor = torch.tensor(y_test, dtype=torch.long)
-        
+
         print("Proportion of classes in train set: ", np.bincount(y_train))
         print("Proportion of classes in cal set: ", np.bincount(y_cal))
         print("Proportion of classes in test set: ", np.bincount(y_test))
@@ -122,9 +125,7 @@ if __name__ == "__main__":
         test_loader = torch.utils.data.DataLoader(
             test_dataset, batch_size=BATCH_SIZE, shuffle=False
         )
-        calloader = torch.utils.data.DataLoader(
-            cal_dataset, batch_size=BATCH_SIZE
-        )
+        calloader = torch.utils.data.DataLoader(cal_dataset, batch_size=BATCH_SIZE)
         train_loader = torch.utils.data.DataLoader(
             train_dataset, batch_size=BATCH_SIZE, shuffle=True
         )
@@ -153,11 +154,12 @@ if __name__ == "__main__":
         schedulers = [
             torch.optim.lr_scheduler.CosineAnnealingLR(
                 opt, T_max=N_EPOCHS, eta_min=1e-6
-            ) for opt in optimizers
+            )
+            for opt in optimizers
         ]
         # orig_freq = np.bincount(y_train)
         # orig_prob = orig_freq / orig_freq.sum()
-        
+
         # loss_weights = 1 / torch.tensor(orig_prob).float().sqrt
         # loss_weights = loss_weights / loss_weights.sum()
         # print("Class distribution: ", orig_freq)
@@ -173,15 +175,13 @@ if __name__ == "__main__":
             criterion = nn.CrossEntropyLoss(weight=None)
         else:
             criterion = ELBOLoss(weight=None, kl_penalty=1e-5)
-            
+
         if MODEL_NAME == "ensemble" and args.ensemble_type == "dare":
             regularizer = RegularizerDare(lambda_reg=0.01)
         print(f"Training {MODEL_NAME} on {dataset_name}...")
         ##### Train the model ####
 
-        for net, optimizer, scheduler in zip(
-            training_models, optimizers, schedulers
-        ):
+        for net, optimizer, scheduler in zip(training_models, optimizers, schedulers):
             net.to(DEVICE)
             for epoch in range(N_EPOCHS):
                 net.train()
@@ -200,56 +200,56 @@ if __name__ == "__main__":
                     if MODEL_NAME == "ensemble" and args.ensemble_type == "adversarial":
                         # Enable gradients for input features
                         batch_X.requires_grad = True
-                    ### Forward pass ###    
+                    ### Forward pass ###
                     optimizer.zero_grad()
                     outputs = net(batch_X)
-                    #print("OUTPUTS: ", outputs[:10])
-                    
+                    # print("OUTPUTS: ", outputs[:10])
+
                     ### Compute loss ###
-                    
+
                     if MODEL_NAME == "bayesian":
                         loss = criterion(outputs, batch_y, net.kl_divergence)
                     else:
                         loss = criterion(outputs, batch_y)
-                        
+
                     if MODEL_NAME == "ensemble" and args.ensemble_type == "dare":
                         # Gradually increase the regularization strength over the first 10 epochs
-                        #after_10_epoch = epoch > 10
+                        # after_10_epoch = epoch > 10
                         lbmda = min(1.0, epoch / 10)
-                        loss -= lbmda*regularizer(net)
-                        
+                        loss -= lbmda * regularizer(net)
+
                     if MODEL_NAME == "ensemble" and args.ensemble_type == "adversarial":
                         # Compute gradients w.r.t. inputs for FGSM
                         loss.backward(retain_graph=True)
                         # Feature-wise epsilon calculation
                         epsilon = 0.5 * torch.std(batch_X, dim=0, keepdim=True)
-                        
+
                         # Generate adversarial examples using FGSM with feature-wise epsilon
                         adversarial_input = batch_X + epsilon * batch_X.grad.sign()
-                        
+
                         # Clamp adversarial inputs to valid range (adjust bounds as needed)
-                        adversarial_input = torch.clamp(adversarial_input, min=batch_X.min(), max=batch_X.max())
+                        adversarial_input = torch.clamp(
+                            adversarial_input, min=batch_X.min(), max=batch_X.max()
+                        )
 
                         # Clear input gradients before next forward pass
                         batch_X.grad.zero_()
-                        
+
                         # Forward pass with adversarial examples
                         outputs_adv = net(adversarial_input)
                         loss_adv = criterion(outputs_adv, batch_y)
-                        
+
                         # Total loss (clean + adversarial)
                         clean_adv_equal_loss = 0.5 * loss + 0.5 * loss_adv
-                        
+
                         # Backward pass for the combined loss
                         clean_adv_equal_loss.backward()
-                        
+
                         # Update loss to be logged
                         loss = clean_adv_equal_loss
                     else:
                         loss.backward()
-                    
 
-                    
                     ### Print Gradients ###
                     # for name, param in net.named_parameters():
                     #     if param.grad is None:
@@ -261,8 +261,8 @@ if __name__ == "__main__":
                     total_loss += loss.item()
 
                 avg_loss = total_loss / len(train_loader)
-                print(f"Epoch {epoch+1}/{N_EPOCHS}, Loss: {avg_loss:.4f}")
-                
+                print(f"Epoch {epoch + 1}/{N_EPOCHS}, Loss: {avg_loss:.4f}")
+
                 outputs = torch.empty(0, device=DEVICE)
                 targets = torch.empty(0, device=DEVICE)
 
@@ -271,7 +271,7 @@ if __name__ == "__main__":
                     output = net(batch_X)
                     outputs = torch.cat((outputs, output), dim=0)
                     targets = torch.cat((targets, batch_y), dim=0)
-                    
+
                 ### Compute metrics ###
                 probs = nn.Softmax(dim=1)(outputs)
                 preds = torch.argmax(probs, dim=1)
@@ -285,21 +285,33 @@ if __name__ == "__main__":
                     false_positives = ((preds == cls) & (targets != cls)).sum().float()
                     false_negatives = ((preds != cls) & (targets == cls)).sum().float()
                     if (true_positives + false_negatives) > 0:
-                            recall[cls] = true_positives / (true_positives + false_negatives)
+                        recall[cls] = true_positives / (
+                            true_positives + false_negatives
+                        )
                     if (true_positives + false_positives) > 0:
-                            precision[cls] = true_positives / (true_positives + false_positives)
+                        precision[cls] = true_positives / (
+                            true_positives + false_positives
+                        )
                     if (precision[cls] + recall[cls]) > 0:
-                            f1[cls] = 2 * (precision[cls] * recall[cls]) / (precision[cls] + recall[cls])
-                print(f"Epoch [{epoch+1}/{N_EPOCHS}], Loss: {loss.item():.4f}, Acc: {accuracy.item():.4f}")
+                        f1[cls] = (
+                            2
+                            * (precision[cls] * recall[cls])
+                            / (precision[cls] + recall[cls])
+                        )
+                print(
+                    f"Epoch [{epoch + 1}/{N_EPOCHS}], Loss: {loss.item():.4f}, Acc: {accuracy.item():.4f}"
+                )
                 print(f"Recall per class: {recall.cpu().numpy()}")
                 print(f"Precision per class: {precision.cpu().numpy()}")
                 print(f"F1-score per class: {f1.cpu().numpy()}")
-                
+
                 ### Step the scheduler ###
-                if not isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+                if not isinstance(
+                    scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau
+                ):
                     scheduler.step()
                 else:
-                    scheduler.step(avg_loss)    
+                    scheduler.step(avg_loss)
 
         ### Calibrate Model ###
         temperature = Temperature(model)
@@ -316,19 +328,24 @@ if __name__ == "__main__":
             model.state_dict(),
             f"models/model={MODEL_NAME}_dataset={DATASET_NAME}.pth",
         )
-            
+
         #### Evaluate on test set ####
         model.eval()
         with torch.no_grad():
             outputs = torch.empty(0, device=DEVICE)
             targets = torch.empty(0, device=DEVICE)
             for inpt, target in tqdm(test_loader):
-                outputs = torch.cat((outputs, model.predict_pointwise(inpt.to(DEVICE),n_samples=50)), dim=0)
+                outputs = torch.cat(
+                    (outputs, model.predict_pointwise(inpt.to(DEVICE), n_samples=50)),
+                    dim=0,
+                )
                 targets = torch.cat((targets, target.to(DEVICE)), dim=0)
         correct = torch.sum(torch.argmax(outputs, dim=1) == targets).item()
         total = targets.size(0)
-        ece = expected_calibration_error(outputs.cpu().numpy(), targets.cpu().numpy(), num_bins=10)
-       # print(f"Softmax temperature: {model.temperature.item()}")
+        ece = expected_calibration_error(
+            outputs.cpu().numpy(), targets.cpu().numpy(), num_bins=10
+        )
+        # print(f"Softmax temperature: {model.temperature.item()}")
         print(f"Accuracy: {correct / total}")
         print(f"Expected Calibration Error: {ece}")
 
@@ -337,18 +354,12 @@ if __name__ == "__main__":
         )
         print(model)
         if MODEL_NAME == "ensemble":
-            preds = model.predict_representation(
-                X_test_tensor
-            )
+            preds = model.predict_representation(X_test_tensor)
         else:
             preds = model.predict_representation(X_test_tensor, n_samples=N_MC_SAMPLES)
         print("Predicted probabilities (first 10 samples): ", preds[:10])
         te_e, au_e, eu_e = entropy_based_uncertainty_quantification(preds)
         te_v, au_v, eu_v = variance_based_uncertainty_quantification(preds)
         print(f"Total Entropy (first 10 samples): {te_e[:10]}--{te_v[:10]}")
-        print(
-            f"Aleatoric Uncertainty (first 10 samples): {au_e[:10]}--{au_v[:10]}"
-        )
-        print(
-            f"Epistemic Uncertainty (first 10 samples): {eu_e[:10]}--{eu_v[:10]}"
-        )
+        print(f"Aleatoric Uncertainty (first 10 samples): {au_e[:10]}--{au_v[:10]}")
+        print(f"Epistemic Uncertainty (first 10 samples): {eu_e[:10]}--{eu_v[:10]}")

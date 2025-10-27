@@ -1,10 +1,16 @@
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+
 
 class MLP(nn.Module):
-    def __init__(self, input_dim: int, output_dim: int, hidden_dims: list, batch_norm: bool = False):
+    def __init__(
+        self,
+        input_dim: int,
+        output_dim: int,
+        hidden_dims: list,
+        batch_norm: bool = False,
+    ):
         super(MLP, self).__init__()
         layers = []
         in_dim = input_dim

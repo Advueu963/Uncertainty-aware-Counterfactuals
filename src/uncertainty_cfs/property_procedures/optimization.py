@@ -57,7 +57,9 @@ def counter_factual_optimization_routine(
     counter_factual_steps = counter_factual.detach().clone()
     # Initialize the optimizer
     if optimization_method == "adam":
-        optimizer = Adam([counter_factual], lr=lr, betas=(0.99, 0.999)) # Changing the first beta makes it more responsive to changes
+        optimizer = Adam(
+            [counter_factual], lr=lr, betas=(0.99, 0.999)
+        )  # Changing the first beta makes it more responsive to changes
     elif optimization_method == "sgd":
         optimizer = SGD([counter_factual], lr=lr)
     else:
@@ -96,55 +98,46 @@ def counter_factual_optimization_routine(
             start_cf_construction=start_cf_construction,
             **kwargs,
         )
-        
+
         # Remove the gradients for points that have reached the desired validity already
-        counter_factual_copy = counter_factual.detach().clone()
-        proportion_reaching_desired_validity = torch.sum(probs[:,desired_class] >= DESIRED_VALIDITY).item() / probs.shape[0]
+        proportion_reaching_desired_validity = (
+            torch.sum(probs[:, desired_class] >= DESIRED_VALIDITY).item()
+            / probs.shape[0]
+        )
         # if proportion_reaching_desired_validity > 0:
         #     print("Proportion of points reaching desired validity: ", proportion_reaching_desired_validity)
         #     print("PROBS REACHING DESIRED VALIDITY: ", probs[probs[:,desired_class] >= DESIRED_VALIDITY, desired_class])
         #     print("GRADS    REACHING DESIRED VALIDITY: ", grad[probs[:,desired_class] >= DESIRED_VALIDITY, :])
         # print("PROBS REACHING DESIRED VALIDITY: ", proportion_reaching_desired_validity)
         # print("GRAD BEFORE IMMUTABILITY: ", grad)
-        grad[:, immutable_features_lists] = 0  # Enforce immutability constraints in the gradients
-        if torch.sum(torch.abs(grad)) == 0 and proportion_reaching_desired_validity < 1.0:
-            print("!!!!!!!!ALL GRADIENTS ARE ZERO!!!!!!!!!!")
-            # print("APPLYING SMALL PERTURBATION TO GRADIENTS TO AVOID STALLING.")
-            #raise NotImplementedError("This should not be reached anymore.")
-            grad[probs[:,desired_class] < DESIRED_VALIDITY, :] += 1e-6 # To avoid stopping when all gradients are zero
-            
-        counter_factual.grad = grad
-        #print("GRAD AFTER IMMUTABILITY: ", counter_factual.grad)
-        #print("GRAD: ", counter_factual.grad)
-        optimizer.step()
-        
+        grad[:, immutable_features_lists] = (
+            0  # Enforce immutability constraints in the gradients
+        )
 
-        #raise NotImplementedError("This should not be reached anymore.")
+        counter_factual.grad = grad
+        # print("GRAD AFTER IMMUTABILITY: ", counter_factual.grad)
+        # print("GRAD: ", counter_factual.grad)
+        optimizer.step()
+
+        # raise NotImplementedError("This should not be reached anymore.")
         # Enforce categorical constraints by setting the maximum value in each categorical feature to 1 and the rest to 0
         for cat_list in categorical_features_lists:
             cat_list = np.array(cat_list)
             with torch.no_grad():
                 # Get the indices of the maximum value in the categorical feature
-                max_index = torch.argmax(counter_factual[:,cat_list],dim=1)
-                    
-                new_vals = torch.nn.functional.one_hot(max_index, num_classes=len(cat_list)).float()
+                max_index = torch.argmax(counter_factual[:, cat_list], dim=1)
+
+                new_vals = torch.nn.functional.one_hot(
+                    max_index, num_classes=len(cat_list)
+                ).float()
                 counter_factual[:, cat_list] = new_vals
 
-        
-        # with torch.no_grad():
-        #     if (probs[:, desired_class] >= DESIRED_VALIDITY).any():
-        #         print("Some points have reached the desired validity, not changing them anymore.")
-        #     counter_factual[probs[:,desired_class] >= DESIRED_VALIDITY, :] = counter_factual_copy[probs[:,desired_class] >= DESIRED_VALIDITY, :] # Revert changes for points that have reached the desired validity already
-        # # print(counter_factual,au, t)
-        
-
-        # Extract Target probabilities
         probs_ensemble = probability_function(model, counter_factual.detach().clone())
         probs = probs_ensemble.mean(dim=1)
         target_probs = probs[:, desired_class].min()
 
         # Check for early stopping
-        if abs(prior_loss - loss.mean().item()) < 0.01: # pyright: ignore[reportUnknownMemberType]
+        if abs(prior_loss - loss.mean().item()) < 0.01:  # pyright: ignore[reportUnknownMemberType]
             patience_counter += 1
         else:
             patience_counter = 0
@@ -155,7 +148,16 @@ def counter_factual_optimization_routine(
             (counter_factual_steps, counter_factual.detach())
         )
         T += 1
-        print("TARGET PROBS", target_probs.item(), "BEST Prob", probs[:,desired_class].max(),"LOSS", loss.mean().item(), "FINISHING RATIO", proportion_reaching_desired_validity)
+        print(
+            "TARGET PROBS",
+            target_probs.item(),
+            "BEST Prob",
+            probs[:, desired_class].max(),
+            "LOSS",
+            loss.mean().item(),
+            "FINISHING RATIO",
+            proportion_reaching_desired_validity,
+        )
     # Print out reason for stopping
     if T >= MAX_STEPS:
         print("Reached maximum number of steps.")
@@ -164,7 +166,6 @@ def counter_factual_optimization_routine(
     elif patience_counter >= patience:
         print("Patience limit reached.")
     return counter_factual.detach(), counter_factual_steps
-
 
 
 def counter_factual_optimization_routine_schut(
@@ -231,7 +232,9 @@ def counter_factual_optimization_routine_schut(
     patience_counter = 0
     prior_loss = 0
     start_cf_construction = False
-    updated_features = torch.zeros_like(point_to_explain).view(point_to_explain.shape[0], -1)  # To track which features have been updated
+    updated_features = torch.zeros_like(point_to_explain).view(
+        point_to_explain.shape[0], -1
+    )  # To track which features have been updated
     while (
         T < MAX_STEPS
         and target_probs < DESIRED_VALIDITY
@@ -258,35 +261,29 @@ def counter_factual_optimization_routine_schut(
 
         # Get indices of highest gradient
         flatten_grads = grad.view(point_to_explain.shape[0], -1)
-        flatten_grads[updated_features > 5] = 0  # Ignore features that have been updated more than 5 times
-        idx_max_grad = torch.argmax(torch.abs(flatten_grads), dim=1)  # Assuming grad is of shape (1, C, H, W) for images
+        flatten_grads[updated_features > 5] = (
+            0  # Ignore features that have been updated more than 5 times
+        )
+        idx_max_grad = torch.argmax(
+            torch.abs(flatten_grads), dim=1
+        )  # Assuming grad is of shape (1, C, H, W) for images
         # Zero out all gradients except the one with the highest absolute value
         updated_grad = torch.zeros_like(grad).view(point_to_explain.shape[0], -1)
         updated_grad[:, idx_max_grad] = torch.sign(flatten_grads[:, idx_max_grad])
         grad = updated_grad.view_as(grad)
-        
+
         counter_factual.grad = grad
         optimizer.step()
-        
-        updated_features[:, idx_max_grad] += 1  # Mark this feature as updated
-        
-        # TODO: Make the valid range adjustable for different datasets
-        with torch.no_grad(): # This deactivates gradient tracking for the operations within this block
-            counter_factual.clamp_(-0.5,3) # Assuming the valid range is [-0.5, 3] which is for MNIST dataset
-            
-        # # Enforce categorical constraints by setting the maximum value in each categorical feature to 1 and the rest to 0
-        # for cat_list in categorical_features_lists:
-        #     cat_list = np.array(cat_list)
-        #     with torch.no_grad():
-        #         # Get the indices of the maximum value in the categorical feature
-        #         max_index = torch.argmax(counter_factual[:,cat_list],dim=1)
-                    
-        #         new_vals = torch.nn.functional.one_hot(max_index, num_classes=len(cat_list)).float()
-        #         counter_factual[:, cat_list] = new_vals
 
-        #     # if torch.sum(torch.abs(counter_factual[:,cat_list] - point_to_explain[:,cat_list])) > 0:
-        #     #     print("Counterfactual changed in categorical features.")
-        
+        updated_features[:, idx_max_grad] += 1  # Mark this feature as updated
+
+        # TODO: Make the valid range adjustable for different datasets
+        with (
+            torch.no_grad()
+        ):  # This deactivates gradient tracking for the operations within this block
+            counter_factual.clamp_(
+                -0.5, 3
+            )  # Assuming the valid range is [-0.5, 3] which is for MNIST dataset
 
         # Extract Target probabilities
         probs_ensemble = probability_function(model, counter_factual.detach().clone())
@@ -294,7 +291,7 @@ def counter_factual_optimization_routine_schut(
         target_probs = probs[:, desired_class].min()
 
         # Check for early stopping
-        if abs(prior_loss - loss.mean().item()) < 0.01: # pyright: ignore[reportUnknownMemberType]
+        if abs(prior_loss - loss.mean().item()) < 0.01:  # pyright: ignore[reportUnknownMemberType]
             patience_counter += 1
         else:
             patience_counter = 0

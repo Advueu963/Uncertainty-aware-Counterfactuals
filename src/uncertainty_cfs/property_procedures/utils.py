@@ -6,7 +6,11 @@ from sklearn.neighbors import KNeighborsClassifier
 from probly.calibration import Temperature
 from carla.recourse_methods import GrowingSpheres, Clue, Dice, Face
 from uncertainty_cfs.synthetic_to_carla import Synthetic_CARLA, MyOwnModel
-from uncertainty_cfs.decompositions import entropy_based_uncertainty_quantification, variance_based_uncertainty_quantification
+from uncertainty_cfs.decompositions import (
+    entropy_based_uncertainty_quantification,
+    variance_based_uncertainty_quantification,
+)
+
 
 def sample_delta_ball(reference_point, delta, n_points):
     """Samples points from a delta-ball around a reference point.
@@ -61,14 +65,15 @@ def sample_line(x1, x2, num_samples=10):
 
 ### MonteCarlo/Bayesian/ ###
 
+
 def predict_probs(model: Temperature, points: torch.Tensor):
-    """ Compute probabilities for given points using Monte Carlo Dropout or Bayesian model."""
+    """Compute probabilities for given points using Monte Carlo Dropout or Bayesian model."""
     probs = model.predict_representation(points, n_samples=100)
-    
-    
+
     # print("PROBS: ", probs)
     # print("PREDICTED PROBS SHAPE: ", probs.shape)
     return probs
+
 
 def total_uncertainty_entropy(probs):
     """Compute the total uncertainty using entropy-based measures.
@@ -85,6 +90,7 @@ def total_uncertainty_entropy(probs):
     te, _, _ = entropy_based_uncertainty_quantification(probs)
     return te
 
+
 def aleatoric_uncertainty_entropy(probs):
     """Compute the aleatoric uncertainty using entropy-based measures.
 
@@ -99,6 +105,7 @@ def aleatoric_uncertainty_entropy(probs):
     """
     _, au, _ = entropy_based_uncertainty_quantification(probs)
     return au
+
 
 def epistemic_uncertainty_entropy(probs):
     """Compute the epistemic uncertainty using entropy-based measures.
@@ -131,6 +138,7 @@ def total_uncertainty_variance(probs):
     tv, _, _ = variance_based_uncertainty_quantification(probs)
     return tv
 
+
 def aleatoric_uncertainty_variance(probs):
     """Compute the aleatoric uncertainty using variance-based measures.
 
@@ -146,6 +154,7 @@ def aleatoric_uncertainty_variance(probs):
     _, au, _ = variance_based_uncertainty_quantification(probs)
     return au
 
+
 def epistemic_uncertainty_variance(probs):
     """Compute the epistemic uncertainty using variance-based measures.
 
@@ -159,7 +168,8 @@ def epistemic_uncertainty_variance(probs):
 
     """
     _, _, eu = variance_based_uncertainty_quantification(probs)
-    return eu    
+    return eu
+
 
 # def ensemble_probs(ensemble_model, points):
 #     """Compute Ensemble probabilities for given points using `epiuc` package.
@@ -339,14 +349,18 @@ def distance_func(point_of_interest, cf_point_of_interest, X, categorical_featur
         torch.Tensor: The computed distance.
     """
     all_features = np.arange(X.shape[1])
-    continuous_features = np.array([f for f in all_features if f not in categorical_features])
+    continuous_features = np.array(
+        [f for f in all_features if f not in categorical_features]
+    )
     # print(point_of_interest.shape, cf_point_of_interest.shape, X.shape)
-    # print("ORIGINAL: ", point_of_interest[0]) 
+    # print("ORIGINAL: ", point_of_interest[0])
     # print("COUNTERFACTUAL: ", cf_point_of_interest[0])
     if len(categorical_features) > 0:
         point_of_interest_cat = point_of_interest[:, categorical_features]
         cf_point_of_interest_cat = cf_point_of_interest[:, categorical_features]
-        cat_distance = (point_of_interest_cat != cf_point_of_interest_cat).float().mean(dim=1)
+        cat_distance = (
+            (point_of_interest_cat != cf_point_of_interest_cat).float().mean(dim=1)
+        )
 
         # Exclude categorical features from distance calculation
         point_of_interest = point_of_interest[:, continuous_features]
@@ -355,34 +369,43 @@ def distance_func(point_of_interest, cf_point_of_interest, X, categorical_featur
 
         abs_distances = torch.abs(point_of_interest - cf_point_of_interest)
         data_median = torch.median(X, axis=0).values
-        median_absolute_deviation = torch.median(torch.abs(X - data_median), axis=0).values
-        median_absolute_deviation = torch.where(median_absolute_deviation == 0, 1, median_absolute_deviation)
-        distance = (
-            abs_distances / (median_absolute_deviation + 1e-8)
-        ).mean(dim=1)
-        
+        median_absolute_deviation = torch.median(
+            torch.abs(X - data_median), axis=0
+        ).values
+        median_absolute_deviation = torch.where(
+            median_absolute_deviation == 0, 1, median_absolute_deviation
+        )
+        distance = (abs_distances / (median_absolute_deviation + 1e-8)).mean(dim=1)
+
         return distance + cat_distance
     else:
         abs_distances = torch.abs(point_of_interest - cf_point_of_interest)
         data_median = torch.median(X, axis=0).values
         # print("DIFF X to MEDIAN: ", torch.abs(X - data_median), (X - data_median).shape)
-        median_absolute_deviation = torch.median(torch.abs(X - data_median), axis=0).values
+        median_absolute_deviation = torch.median(
+            torch.abs(X - data_median), axis=0
+        ).values
         # Make sure median_absolute_deviation is not zero to avoid division by zero. Identical to procedure here: https://github.com/riccotti/Scamander/blob/main/cf_eval/metrics.py
-        median_absolute_deviation = torch.where(median_absolute_deviation == 0, 1, median_absolute_deviation)
+        median_absolute_deviation = torch.where(
+            median_absolute_deviation == 0, 1, median_absolute_deviation
+        )
         # print("MEDIAN ABSOLUTE DEVIATION: ", median_absolute_deviation, median_absolute_deviation.shape)
         # print("ABS DISTANCES: ", abs_distances, abs_distances.shape)
         # print("DATA MEDIAN: ", data_median, data_median.shape)
-        distance = (
-            abs_distances / (median_absolute_deviation + 1e-8)
-        ).mean(dim=1)
+        distance = (abs_distances / (median_absolute_deviation + 1e-8)).mean(dim=1)
         # print("FEATURE-WISE DISTANCE: ", abs_distances / (median_absolute_deviation + 1e-8), (abs_distances / (median_absolute_deviation + 1e-8)).shape)
         # print("DISTANCE: ", distance, distance.shape)
-        
+
         return distance
 
 
 def instability_metric(
-    point_of_interest, point_to_compare, cf_point_of_interest, cf_point_to_compare, X, categorical_features=[]
+    point_of_interest,
+    point_to_compare,
+    cf_point_of_interest,
+    cf_point_to_compare,
+    X,
+    categorical_features=[],
 ):
     """
     Calculate the dissimilarity metric between two points and their counterfactuals.
@@ -401,9 +424,13 @@ def instability_metric(
     # print("POINT TO COMPARE: ", point_to_compare[0])
     # print("COUNTERFACTUAL POINT OF INTEREST: ", cf_point_of_interest[0])
     # print("COUNTERFACTUAL POINT TO COMPARE: ", cf_point_to_compare[0])
-    distance_original = distance_func(point_of_interest, point_to_compare, X, categorical_features)
+    distance_original = distance_func(
+        point_of_interest, point_to_compare, X, categorical_features
+    )
     # print("DISTANCE ORIGINAL: ", distance_original[0])
-    distance_cf = distance_func(cf_point_of_interest, cf_point_to_compare, X, categorical_features)
+    distance_cf = distance_func(
+        cf_point_of_interest, cf_point_to_compare, X, categorical_features
+    )
     # print("DISTANCE CF: ", distance_cf[0])
     # print("----------------------------------")
     # Return the dissimilarity metric
@@ -442,7 +469,9 @@ def discriminative_power(
     X_equal_poi = np.array(X_equal_poi)
     y_diff_poi = k_nn.predict(X_diff_poi)
     y_equal_poi = k_nn.predict(X_equal_poi)
-    accuracy = np.mean(np.hstack([y_diff_poi == class_cf, y_equal_poi == class_poi])).astype(np.float32)
+    accuracy = np.mean(
+        np.hstack([y_diff_poi == class_cf, y_equal_poi == class_poi])
+    ).astype(np.float32)
     # Return the discriminative power
     return accuracy
 
@@ -460,7 +489,9 @@ def dissimilarity(point_of_interest, cf_point_of_interest, X, categorical_featur
     """
 
     # Calculate the Euclidean distance between the points and their counterfactuals
-    distance_original = distance_func(point_of_interest, cf_point_of_interest, X, categorical_features)
+    distance_original = distance_func(
+        point_of_interest, cf_point_of_interest, X, categorical_features
+    )
 
     # Return the dissimilarity metric
     return distance_original
@@ -491,8 +522,12 @@ def implausability(cf_point_of_interest, X, categorical_features=[]):
         float: The implausibility metric.
     """
     # Calculate the distance from the counterfactual point to the training data
-    v_func = torch.vmap(lambda x: distance_func(x.view(1, -1), cf_point_of_interest, X, categorical_features))
-    distances = v_func(X).T # shape= (n_cf, n_points)
+    v_func = torch.vmap(
+        lambda x: distance_func(
+            x.view(1, -1), cf_point_of_interest, X, categorical_features
+        )
+    )
+    distances = v_func(X).T  # shape= (n_cf, n_points)
     # print("-------------------------------")
     # print("IMPLAUSIBILITY DATA SHAPE: ", X.shape)
     # print("IMPLAUSIBILITY DISTANCES: ", distances[0])
@@ -517,15 +552,27 @@ def invalidity(cf_point_of_interest, model, probability_function, desired_class=
         float: The invalidity metric.
     """
     mask = cf_point_of_interest.isnan().any(dim=1)
-    cf_point_of_interest = torch.where(mask[:,None], torch.zeros_like(cf_point_of_interest), cf_point_of_interest)
-    
-    
+    cf_point_of_interest = torch.where(
+        mask[:, None], torch.zeros_like(cf_point_of_interest), cf_point_of_interest
+    )
+
     # Get the probabilities of the counterfactual point
     probs_ensemble = probability_function(model, cf_point_of_interest[~mask])
     probs = probs_ensemble.mean(dim=1)
 
     # Return the invalidity metric
-    return (1 - torch.where(mask[:,None], torch.zeros_like(probs[:, desired_class]), probs[:, desired_class])).detach().numpy()
+    return (
+        (
+            1
+            - torch.where(
+                mask[:, None],
+                torch.zeros_like(probs[:, desired_class]),
+                probs[:, desired_class],
+            )
+        )
+        .detach()
+        .numpy()
+    )
 
 
 ##################################################################

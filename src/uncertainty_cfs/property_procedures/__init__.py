@@ -8,7 +8,10 @@ from .feasable import feasable_loss_function
 from .discriminative import discriminative_loss_function, discriminative_loss_function_2
 from .plausable import plausable_loss_function
 from .similarity import similarity_loss_function
-from .optimization import counter_factual_optimization_routine, counter_factual_optimization_routine_schut
+from .optimization import (
+    counter_factual_optimization_routine,
+    counter_factual_optimization_routine_schut,
+)
 from .combined import combined_loss_function, combined_loss_function_distance
 
 __all__ = [

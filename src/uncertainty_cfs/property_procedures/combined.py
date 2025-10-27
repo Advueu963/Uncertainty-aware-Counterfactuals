@@ -80,7 +80,8 @@ def combined_loss_function(
     return loss, grad
 
 
-def combined_loss_function_distance(point_to_explain,
+def combined_loss_function_distance(
+    point_to_explain,
     counter_factual,
     model,
     probability_function,
@@ -136,11 +137,14 @@ def combined_loss_function_distance(point_to_explain,
     # print("AU DELTA BALL: ", au_delta_ball)
     # print("EU DELTA BALL: ", eu_delta_ball)
     distance_l1 = torch.abs(counter_factual - point_to_explain).sum(dim=1)
-    distance_l2 = torch.sqrt(((counter_factual - point_to_explain)**2).sum(dim=1) + 1e-8)
+    distance_l2 = torch.sqrt(
+        ((counter_factual - point_to_explain) ** 2).sum(dim=1) + 1e-8
+    )
     distance = distance_l1 + distance_l2
-    normalized_distance = (distance - distance.min()) / (distance.max() - distance.min() + 1e-8)
-    
-    
+    normalized_distance = (distance - distance.min()) / (
+        distance.max() - distance.min() + 1e-8
+    )
+
     target_probs = probs[:, desired_class]
 
     # Calculate the losssq
@@ -150,7 +154,7 @@ def combined_loss_function_distance(point_to_explain,
         + lambda_1 * (normalized_distance + 1e-8).exp()
     )
     loss = loss + torch.where(
-        target_probs > 0.5, lambda_2 * (au_delta_ball.mean(dim=1).exp()) , 0
+        target_probs > 0.5, lambda_2 * (au_delta_ball.mean(dim=1).exp()), 0
     )
     # print("LOSS COMPONENTS: ", -(p_weight * target_probs.log2()), (eu_delta_ball.mean(dim=1).log2()), -au_delta_ball.max(dim=1).values.log2(), normalized_distance)
     loss.sum().backward()

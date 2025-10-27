@@ -49,11 +49,14 @@ def mutual_information(probs: torch.Tensor) -> torch.Tensor:
 
     """
     probs_mean = torch.mean(probs, dim=1)
-    probs_mean = torch.repeat_interleave(torch.unsqueeze(probs_mean, 1), repeats=probs.shape[1], dim=1)
-    mi = torch.sum(probs * (torch.log2(probs + 1e-10) - torch.log2(probs_mean + 1e-10)), dim=2)
+    probs_mean = torch.repeat_interleave(
+        torch.unsqueeze(probs_mean, 1), repeats=probs.shape[1], dim=1
+    )
+    mi = torch.sum(
+        probs * (torch.log2(probs + 1e-10) - torch.log2(probs_mean + 1e-10)), dim=2
+    )
     mi = torch.mean(mi, dim=1)
     return mi.clamp(min=1e-10, max=1 - 1e-10)
-
 
 
 def entropy_based_uncertainty_quantification(predictions: torch.Tensor) -> tuple:
@@ -69,7 +72,6 @@ def entropy_based_uncertainty_quantification(predictions: torch.Tensor) -> tuple
     au = conditional_entropy(predictions)
     te = total_entropy(predictions)
     return te, au, eu
-
 
 
 def total_variance(probs: torch.Tensor) -> torch.Tensor:
@@ -120,7 +122,6 @@ def variance_conditional_expectation(probs: torch.Tensor) -> torch.Tensor:
     probs_mean = torch.mean(probs, dim=1, keepdim=True)
     vce = torch.sum(torch.mean(probs * (probs - probs_mean), dim=1), dim=1)
     return vce.clamp(min=0.0)
-
 
 
 def variance_based_uncertainty_quantification(preds: torch.Tensor) -> tuple:
