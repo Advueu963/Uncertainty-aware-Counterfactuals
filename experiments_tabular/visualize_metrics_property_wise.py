@@ -2,19 +2,29 @@ import pandas as pd
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
-import seaborn as sns
+import scienceplots  # noqa: F401  # registers scienceplots styles
 import argparse
+from plot_config import (
+    FIGSIZE,
+    METRIC_LABELS,
+    METRIC_LIST,
+    MODEL_CHOICES,
+    PROPERTY_DISPLAY_LABELS,
+    PROPERTY_METHODS,
+    PROPERTY_ORDER,
+    PROPERTY_PALETTE,
+    PROPERTY_RENAME,
+    apply_publication_style,
+    filter_outliers_iqr,
+    load_model_results,
+)
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "--model_name",
     type=str,
     default="deep_ensemble",
-    choices=[
-        "deep_ensemble",
-        "dare_ensemble",
-        "adversarial_ensemble",
-    ],
+    choices=MODEL_CHOICES,
     help="Type of model to use",
 )
 args = parser.parse_args()
@@ -22,114 +32,78 @@ args = parser.parse_args()
 if __name__ == "__main__":
     np.random.seed(42)
     torch.manual_seed(42)
-    CONSIDERED_METHODS = [
-        "validity",
-        "connected_ball",
-        "robust",
-        "feasability",
-        "discriminative",
-        "plausable",
-        "similarity",
-        "combined",
-        "combined_uncertainty_distance",
-    ]
-    RENAME_DICT = {
-        "combined": "uncertainty",
-        "combined_uncertainty_distance": "uncertainty+distance",
-    }
-    data_files = [
-        "bank",
-        "churn",
-        "compas",
-        "diabetes",
-        "fico",
-        "home",
-        "titanic",
-        "breast_cancer",
-        "boston_housing",
-    ]
-    metric_list = [
-        "instability",
-        "invalidity",
-        "dissimilarity",
-        "dissparsity",
-        "implausability",
-        "discriminative_power",
-    ]
-    d1 = pd.read_csv(f"best_sweep_results_{args.model_name}.csv")
-    d2 = pd.read_csv(
-        f"best_sweep_results_{args.model_name}_uncertainty_plus_distance_test.csv"
-    )
-    d3 = pd.read_csv(f"best_sweep_results_{args.model_name}_CLUE.csv")
-    d4 = pd.read_csv(f"best_sweep_results_{args.model_name}_FACE.csv")
-    data = pd.concat([d1, d2, d3, d4], ignore_index=True)
+    considered_methods = PROPERTY_METHODS.copy()
+    data = load_model_results(args.model_name)
     # Rename the methods accordingly
-    data = data[data["method"].isin(CONSIDERED_METHODS)]
-    data["method"] = data["method"].replace(RENAME_DICT)
-    CONSIDERED_METHODS = [RENAME_DICT.get(m, m) for m in CONSIDERED_METHODS]
-    print("Loaded Data: ", data)
-    # Plotting boxplots
+    data = data[data["method"].isin(considered_methods)]
+    data["method"] = data["method"].replace(PROPERTY_RENAME)
+    hue_order = [m for m in PROPERTY_ORDER if m in data["method"].unique()]
+    apply_publication_style()
+    fig, axes = plt.subplots(2, 3, figsize=FIGSIZE)
+    axes = axes.flatten()
 
-    sns.set(style="whitegrid")
-    hue_order = [m for m in CONSIDERED_METHODS if m in data["method"].unique()]
-    plt.figure(figsize=(20, 15))
+    for i, metric in enumerate(METRIC_LIST):
+        plot_data = data[["dataset", "method", metric]].copy()
+        plot_data = filter_outliers_iqr(plot_data, metric)
 
-    palette = {
-        "validity": "#D55E00",
-        "connected_ball": "#E69F00",
-        "robust": "#F0E442",
-        "feasability": "#009E73",
-        "discriminative": "#56B4E9",
-        "plausable": "#0072B2",
-        "similarity": "#CC79A7",
-        "uncertainty": "#D55E00",  # vivid orange to separate from recourse baselines
-        "uncertainty+distance": "#009E73",  #
-    }
+        series_per_property = []
+        labels = []
+        for prop in hue_order:
+            values = plot_data.loc[plot_data["method"] == prop, metric].dropna().values
+            if len(values) > 0:
+                series_per_property.append(values)
+                labels.append(prop)
 
-    for i, metric in enumerate(metric_list):
-        plot_data = data[["dataset", "method", metric]]
-        print("Plotting metric", metric, "with data", plot_data)
-
-        # Remove outliers for better visualization
-        Q1 = plot_data[metric].quantile(0.25)
-        Q3 = plot_data[metric].quantile(0.75)
-        IQR = Q3 - Q1
-        filter = (plot_data[metric] >= Q1 - 1.5 * IQR) & (
-            plot_data[metric] <= Q3 + 1.5 * IQR
+        ax = axes[i]
+        box = ax.boxplot(
+            series_per_property,
+            tick_labels=labels,
+            patch_artist=True,
+            widths=0.65,
+            showfliers=False,
+            medianprops={"color": "#1a1a1a", "linewidth": 1.4},
+            whiskerprops={"linewidth": 1.1},
+            capprops={"linewidth": 1.1},
+            boxprops={"linewidth": 1.1},
         )
-        plot_data = plot_data.loc[filter]
+        for patch, label in zip(box["boxes"], labels):
+            patch.set_facecolor(PROPERTY_PALETTE[label])
+            patch.set_alpha(0.75)
+            patch.set_edgecolor("#2b2b2b")
 
-        plt.subplot(3, 3, i + 1)
-        sns.boxplot(
-            x="method",
-            y=metric,
-            hue="method",
-            data=plot_data,
-            order=hue_order,
-            hue_order=hue_order,
-            palette=palette,
-        )
-        plt.title(metric)
-        plt.xticks(rotation=45)
-        plt.legend(loc="upper right", fontsize="small")
-    plt.tight_layout()
-    plt.savefig(
+        ax.set_xlabel("property", fontsize=12)
+        ax.set_ylabel(METRIC_LABELS[metric], fontsize=22, fontweight="bold")
+        ax.set_xticklabels([PROPERTY_DISPLAY_LABELS[label] for label in labels], rotation=35)
+        ax.tick_params(axis="x", labelsize=12)
+        ax.tick_params(axis="y", labelsize=12)
+
+    for idx in range(len(METRIC_LIST), len(axes)):
+        fig.delaxes(axes[idx])
+
+    fig.tight_layout()
+    fig.savefig(
         f"metrics_boxplots_{args.model_name}_property_wise.pdf",
         bbox_inches="tight",
         pad_inches=0,
         dpi=300,
     )
+    fig.savefig(
+        f"metrics_boxplots_{args.model_name}_property_wise.png",
+        bbox_inches="tight",
+        pad_inches=0.03,
+        dpi=600,
+    )
 
     # Create Latex table
     table_data = []
-    for method in CONSIDERED_METHODS:
+    for method in considered_methods:
         row = [method]
         method_data = data[data["method"] == method]
-        for metric in metric_list:
+        for metric in METRIC_LIST:
             mean_val = method_data[metric].mean()
             std_val = method_data[metric].std()
             row.append(f"{mean_val:.4f} ± {std_val:.4f}")
         table_data.append(row)
-    columns = ["Method"] + metric_list
+    columns = ["Method"] + METRIC_LIST
     latex_table = pd.DataFrame(table_data, columns=columns)
     print("Latex Table:\n", latex_table.to_latex(index=False))

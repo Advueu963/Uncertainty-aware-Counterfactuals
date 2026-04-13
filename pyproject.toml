@@ -5,7 +5,6 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "carla",
     "causalgraphicalmodels>=0.0.4",
     "dice-ml>=0.9",
     "jupyterlab>=4.4.3",
@@ -18,6 +17,7 @@ dependencies = [
     "pyyaml>=6.0.2",
     "recourse>=1.0.0",
     "scikit-learn>=1.6.1",
+    "scienceplots>=2.1.1",
     "setuptools>=80.9.0",
     "split>=0.4",
     "tensorflow>=2.14.0",
@@ -43,10 +43,6 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 include = ["uncertainty_cfs"]
 
-[tool.uv.workspace]
-members = [
-    "CARLA",
-]
 
 [tool.uv.sources]
 carla = { workspace = true }
